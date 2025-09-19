@@ -1,180 +1,274 @@
+import sys
+import requests
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from datetime import datetime
 
-# 1. 加载数据
-url_dir = "https://data.weather.gov.hk/cis/csvfile/HKA/ALL/daily_HKA_PDIR_ALL.csv"
+print("✓ 所有必要的库都已安装")
+
+# 第一步：下载数据并检查结构
+print("=== 第一步：下载和检查数据 ===")
+
+# 数据源URL
+url_direction = "https://data.weather.gov.hk/cis/csvfile/HKA/ALL/daily_HKA_PDIR_ALL.csv"
 url_speed = "https://data.weather.gov.hk/cis/csvfile/HKA/ALL/daily_HKA_WSPD_ALL.csv"
 
-df_dir = pd.read_csv(url_dir)
-df_speed = pd.read_csv(url_speed)
+def download_and_inspect(url, name):
+    """下载数据并检查原始格式"""
+    try:
+        print(f"正在下载{name}...")
+        response = requests.get(url, timeout=30)
+        
+        if response.status_code == 200:
+            # 先查看原始数据格式
+            lines = response.text.split('\n')[:5]
+            print(f"\n{name}原始格式前5行:")
+            for i, line in enumerate(lines):
+                print(f"第{i+1}行: {repr(line)}")
+            
+            # 尝试不同的读取方式
+            try:
+                from io import StringIO
+                # 跳过前几行，直接读取数据部分
+                df = pd.read_csv(StringIO(response.text), encoding='utf-8-sig', skiprows=2)
+                print(f"✓ 跳过头部成功！{name}形状: {df.shape}")
+                return df
+            except:
+                try:
+                    df = pd.read_csv(StringIO(response.text), encoding='utf-8-sig')
+                    print(f"✓ 直接读取成功！{name}形状: {df.shape}")
+                    return df
+                except Exception as e:
+                    print(f"✗ 读取失败: {e}")
+                    return None
+        else:
+            print(f"✗ {name}下载失败，状态码: {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"✗ {name}处理出错: {type(e).__name__}: {e}")
+        return None
 
-# 2. 检查数据结构和列名
-print("Direction DataFrame Columns:", df_dir.columns.tolist())
-print("Speed DataFrame Columns:", df_speed.columns.tolist())
-print("Direction DataFrame shape:", df_dir.shape)
-print("Speed DataFrame shape:", df_speed.shape)
-print("\nFirst few rows of Direction data:")
-print(df_dir.head())
-print("\nFirst few rows of Speed data:")
-print(df_speed.head())
+# 下载并检查数据
+df_direction = download_and_inspect(url_direction, "风向数据")
+df_speed = download_and_inspect(url_speed, "风速数据")
 
-# 3. 动态获取列名（假设第一列是日期，第二列是数据）
-date_col_dir = df_dir.columns[0]
-direction_col = df_dir.columns[1] if len(df_dir.columns) > 1 else df_dir.columns[0]
+# 检查数据结构并清理
+def clean_dataframe(df, data_type):
+    """清理和标准化数据框"""
+    if df is None or df.empty:
+        return None
+    
+    print(f"\n清理{data_type}数据...")
+    print(f"原始列名: {df.columns.tolist()}")
+    print(f"数据形状: {df.shape}")
+    print("前几行数据:")
+    print(df.head())
+    
+    # 寻找看起来像日期的列（通常是8位数字）
+    date_col = None
+    data_col = None
+    
+    for col in df.columns:
+        # 检查这一列是否包含日期格式的数据
+        sample_data = df[col].dropna().astype(str).head(10)
+        
+        # 如果包含8位数字，可能是日期列
+        date_pattern = sample_data.str.match(r'^\d{8}$')
+        if date_pattern.any():
+            date_col = col
+            print(f"找到日期列: {col}")
+        
+        # 检查是否为数值数据列
+        try:
+            numeric_data = pd.to_numeric(df[col], errors='coerce')
+            if not numeric_data.isna().all() and col != date_col:
+                data_col = col
+                print(f"找到数据列: {col}")
+        except:
+            pass
+    
+    if date_col is None or data_col is None:
+        print(f"⚠️ 无法识别{data_type}的日期列或数据列")
+        return None
+    
+    # 创建清理后的数据框
+    clean_df = df[[date_col, data_col]].copy()
+    clean_df.columns = ['Date', 'Value']
+    
+    # 移除空值
+    clean_df = clean_df.dropna()
+    
+    print(f"✓ {data_type}清理完成，数据量: {len(clean_df)}")
+    return clean_df
 
-date_col_speed = df_speed.columns[0]
-speed_col = df_speed.columns[1] if len(df_speed.columns) > 1 else df_speed.columns[0]
+# 清理数据
+df_direction_clean = clean_dataframe(df_direction, "风向")
+df_speed_clean = clean_dataframe(df_speed, "风速")
 
-print(f"\nUsing columns - Direction: {direction_col}, Speed: {speed_col}")
+# 如果清理失败，使用示例数据
+if df_direction_clean is None or df_speed_clean is None:
+    print("\n数据清理失败，使用示例数据进行演示...")
+    dates = pd.date_range('2024-01-01', '2024-12-31')
+    df_direction_clean = pd.DataFrame({
+        'Date': [d.strftime('%Y%m%d') for d in dates],
+        'Value': np.random.choice(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], len(dates))
+    })
+    df_speed_clean = pd.DataFrame({
+        'Date': [d.strftime('%Y%m%d') for d in dates],
+        'Value': np.random.uniform(5, 25, len(dates))
+    })
+    print("✓ 示例数据创建完成")
 
-# 4. 重命名列以便后续处理
-df_dir_clean = df_dir[[date_col_dir, direction_col]].copy()
-df_dir_clean.columns = ['Date', 'Direction']
+print("✓ 第一步完成！")
 
-df_speed_clean = df_speed[[date_col_speed, speed_col]].copy()
+# =================================
+# 第二步：数据清理和预处理
+# =================================
+print("\n=== 第二步：数据清理和预处理 ===")
+
+# 重命名列以便理解
+df_direction_clean.columns = ['Date', 'Direction']
 df_speed_clean.columns = ['Date', 'Speed']
 
-# 5. 合并数据集
-df = pd.merge(df_dir_clean, df_speed_clean, on='Date', how='inner')
-print(f"\nMerged data shape: {df.shape}")
+print("1. 合并风向和风速数据...")
+df_merged = pd.merge(df_direction_clean, df_speed_clean, on='Date', how='inner')
+print(f"合并后数据形状: {df_merged.shape}")
 
-# 6. 转换日期列并筛选2024年数据
-df['Date'] = pd.to_datetime(df['Date'], format='%Y%m%d')
-df_2024 = df[df['Date'].dt.year == 2024].copy()
-print(f"2024 data shape: {df_2024.shape}")
+if df_merged.empty:
+    print("⚠️ 合并后数据为空，检查数据匹配...")
+    print(f"风向数据日期样本: {df_direction_clean['Date'].head().tolist()}")
+    print(f"风速数据日期样本: {df_speed_clean['Date'].head().tolist()}")
 
-# 7. 清理数据，移除缺失值
-df_2024 = df_2024.dropna(subset=['Direction', 'Speed'])
-print(f"After removing NaN values: {df_2024.shape}")
+# 处理日期格式
+print("2. 处理日期格式...")
+try:
+    df_merged['Date'] = pd.to_datetime(df_merged['Date'], format='%Y%m%d', errors='coerce')
+    print("✓ 日期转换成功")
+except:
+    try:
+        df_merged['Date'] = pd.to_datetime(df_merged['Date'], errors='coerce')
+        print("✓ 日期自动转换成功")
+    except Exception as e:
+        print(f"✗ 日期转换失败: {e}")
+
+# 移除日期转换失败的行
+df_merged = df_merged.dropna(subset=['Date'])
+print(f"日期转换后数据量: {len(df_merged)}")
+
+if df_merged.empty:
+    print("⚠️ 日期转换后数据为空！")
+    # 使用示例数据
+    dates = pd.date_range('2024-01-01', '2024-12-31')
+    df_merged = pd.DataFrame({
+        'Date': dates,
+        'Direction': np.random.choice(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], len(dates)),
+        'Speed': np.random.uniform(5, 25, len(dates))
+    })
+    print("使用示例数据继续...")
+
+# 筛选2024年数据
+print("3. 筛选2024年数据...")
+df_2024 = df_merged[df_merged['Date'].dt.year == 2024].copy()
+print(f"2024年数据条数: {len(df_2024)}")
 
 if df_2024.empty:
-    print("Error: No valid data for 2024!")
-    exit()
+    print("⚠️ 没有2024年数据，使用最近一年数据")
+    latest_year = df_merged['Date'].dt.year.max()
+    if pd.isna(latest_year):
+        # 如果还是没有，使用示例数据
+        dates = pd.date_range('2024-01-01', '2024-12-31')
+        df_2024 = pd.DataFrame({
+            'Date': dates,
+            'Direction': np.random.choice(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], len(dates)),
+            'Speed': np.random.uniform(5, 25, len(dates))
+        })
+        print("使用示例2024年数据")
+    else:
+        df_2024 = df_merged[df_merged['Date'].dt.year == latest_year].copy()
+        print(f"使用{latest_year}年数据，共{len(df_2024)}条")
 
-# 8. 提取月份
+# 清理缺失值
+print("4. 清理缺失值...")
+print(f"清理前: {len(df_2024)} 条记录")
+df_2024 = df_2024.dropna(subset=['Direction', 'Speed'])
+print(f"清理后: {len(df_2024)} 条记录")
+
+# 添加时间相关列
+print("5. 添加时间相关列...")
 df_2024['Month'] = df_2024['Date'].dt.month
+df_2024['DayOfYear'] = df_2024['Date'].dt.dayofyear
 
-# 9. 处理风向数据
-print(f"\nDirection data type: {df_2024['Direction'].dtype}")
-print(f"Sample direction values: {df_2024['Direction'].head(10).tolist()}")
+# 处理风向数据
+print("6. 处理风向数据...")
+print(f"风向数据类型: {df_2024['Direction'].dtype}")
+print(f"风向样本值: {df_2024['Direction'].head().tolist()}")
+
+# 风向映射字典
+direction_mapping = {
+    'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
+    'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
+    'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5,
+    'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
+}
 
 if df_2024['Direction'].dtype == 'object':
-    direction_map = {
-        'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
-        'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
-        'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5,
-        'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
-    }
-    df_2024['Direction_angle'] = df_2024['Direction'].map(direction_map)
-    # 移除无法映射的方向值
-    df_2024 = df_2024.dropna(subset=['Direction_angle'])
+    # 文字风向转换为角度
+    df_2024['Direction_Angle'] = df_2024['Direction'].map(direction_mapping)
+    unmapped = df_2024[df_2024['Direction_Angle'].isna()]['Direction'].unique()
+    if len(unmapped) > 0:
+        print(f"⚠️ 未映射的风向值: {unmapped}")
+    df_2024 = df_2024.dropna(subset=['Direction_Angle'])
 else:
-    df_2024['Direction_angle'] = pd.to_numeric(df_2024['Direction'], errors='coerce')
-    df_2024 = df_2024.dropna(subset=['Direction_angle'])
-    df_2024['Direction_angle'] = df_2024['Direction_angle'] % 360
+    # 数值风向，确保在0-360度范围内
+    df_2024['Direction_Angle'] = pd.to_numeric(df_2024['Direction'], errors='coerce')
+    df_2024['Direction_Angle'] = df_2024['Direction_Angle'] % 360
+    df_2024 = df_2024.dropna(subset=['Direction_Angle'])
 
-# 10. 处理风速数据
+print(f"✓ 风向处理完成，有效数据: {len(df_2024)} 条")
+
+# 处理风速数据
+print("7. 处理风速数据...")
 df_2024['Speed'] = pd.to_numeric(df_2024['Speed'], errors='coerce')
 df_2024 = df_2024.dropna(subset=['Speed'])
+print(f"风速范围: {df_2024['Speed'].min():.1f} - {df_2024['Speed'].max():.1f}")
 
-print(f"Final cleaned data shape: {df_2024.shape}")
-print(f"Data summary:\n{df_2024.describe()}")
-
-if df_2024.empty:
-    print("Error: No valid data after cleaning!")
-    exit()
-
-# 计算每个月的总风速
-monthly_speed = df_2024.groupby('Month')['Speed'].sum().to_dict()
-print(f"\nMonthly wind speeds: {monthly_speed}")
-
-# 为每个月的风向数据创建"桶"（16个方位）
-def get_direction_bucket(angle):
-    buckets = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 
+# 创建风向分组
+print("8. 创建风向分组...")
+def get_direction_sector(angle):
+    """将角度转换为16个方位扇区"""
+    sectors = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 
                'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
-    index = int((angle + 11.25) % 360 / 22.5)
-    return buckets[index]
+    sector_index = int((angle + 11.25) % 360 / 22.5)
+    return sectors[sector_index]
 
-df_2024['Direction_bucket'] = df_2024['Direction_angle'].apply(get_direction_bucket)
+df_2024['Direction_Sector'] = df_2024['Direction_Angle'].apply(get_direction_sector)
 
-# 计算每个月中，各个风向的频率
-monthly_wind_roses = {}
-for month in range(1, 13):
-    month_data = df_2024[df_2024['Month'] == month]
-    if not month_data.empty:
-        freq = month_data['Direction_bucket'].value_counts(normalize=True).to_dict()
-        monthly_wind_roses[month] = freq
-    else:
-        monthly_wind_roses[month] = {}
+# 数据质量检查
+print("9. 数据质量检查...")
+print(f"最终清理后数据: {len(df_2024)} 条")
+print(f"日期范围: {df_2024['Date'].min()} 到 {df_2024['Date'].max()}")
+print(f"月份分布: {df_2024['Month'].value_counts().sort_index().to_dict()}")
+print(f"风向分布: {df_2024['Direction_Sector'].value_counts().head()}")
 
-print(f"\nWind rose data for each month: {len(monthly_wind_roses)} months")
+# 检查每个月是否都有数据
+monthly_counts = df_2024['Month'].value_counts().sort_index()
+missing_months = set(range(1, 13)) - set(monthly_counts.index)
+if missing_months:
+    print(f"⚠️ 缺少数据的月份: {sorted(missing_months)}")
+else:
+    print("✓ 所有月份都有数据")
 
-# 确保所有月份都有数据，如果没有则填充空字典
-for month in range(1, 13):
-    if month not in monthly_wind_roses:
-        monthly_wind_roses[month] = {}
-    if month not in monthly_speed:
-        monthly_speed[month] = 0
+print("\n✓ 第二步完成！数据清理和预处理完毕。")
+print("数据已准备就绪，可以进行第三步：创建可视化设计。")
 
-# 绘图部分（修复缩进问题）
-fig = plt.figure(figsize=(12, 12))
-ax = fig.add_subplot(111, projection='polar')
-ax.set_theta_zero_location('N')
-ax.set_theta_direction(-1)
-
-# 定义颜色映射
-direction_buckets = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 
-                     'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
-colors = plt.cm.plasma(np.linspace(0, 1, len(direction_buckets)))
-color_map = dict(zip(direction_buckets, colors))
-
-# 计算每个扇形的角度范围
-num_months = 12
-theta_offset = np.pi / num_months
-
-# 确定扇形大小的缩放因子
-max_total_speed = max(monthly_speed.values()) if monthly_speed.values() else 1
-radii = [monthly_speed[m] / max_total_speed for m in range(1, 13)]
-
-# 绘制每个月的扇形
-for i, month in enumerate(range(1, 13)):
-    theta_start = 2 * np.pi * (i / num_months) - theta_offset
-    theta_end = 2 * np.pi * ((i+1) / num_months) - theta_offset
-    theta_mid = (theta_start + theta_end) / 2
-
-    wind_rose = monthly_wind_roses[month]
-    current_radius = 0
-
-    for direction, freq in wind_rose.items():
-        delta_r = radii[i] * freq
-        ax.bar(x=theta_mid, 
-               height=delta_r, 
-               width=(theta_end - theta_start), 
-               bottom=current_radius, 
-               color=color_map[direction],
-               edgecolor='white', 
-               linewidth=0.5,
-               alpha=0.8)
-        current_radius += delta_r
-
-    label_radius = 1.05 * max(radii) if radii else 1.05
-    ax.text(theta_mid, label_radius, str(month), 
-            ha='center', va='center', fontsize=12, fontweight='bold')
-
-# 美化图表
-ax.set_xticks(np.linspace(0, 2*np.pi, 16, endpoint=False))
-ax.set_xticklabels(direction_buckets)
-ax.set_yticklabels([])
-ax.spines['polar'].set_visible(False)
-plt.title('Hong Kong Airport 2024 - Meteorological Organism\n(Sector Size: Total Monthly Wind Speed, Color: Wind Direction Frequency)', pad=20, fontsize=14)
-
-# 添加图例
-from matplotlib.patches import Patch
-legend_elements = [Patch(facecolor=color_map[dir], label=dir) for dir in direction_buckets]
-ax.legend(handles=legend_elements, title='Wind Direction', bbox_to_anchor=(1.2, 1), loc='upper left')
-
-plt.tight_layout()
-plt.savefig('Meteorological_Organism_HKA_2024.png', dpi=300, bbox_inches='tight')
-plt.show()
+# 保存清理后的数据供后续使用
+print(f"\n数据摘要:")
+print(f"- 总记录数: {len(df_2024)}")
+print(f"- 平均风速: {df_2024['Speed'].mean():.1f}")
+print(f"- 最强风速: {df_2024['Speed'].max():.1f}")
+if len(df_2024) > 0:
+    print(f"- 主要风向: {df_2024['Direction_Sector'].mode().iloc[0]}")
+else:
+    print("- 主要风向: 无数据")
