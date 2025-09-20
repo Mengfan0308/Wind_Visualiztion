@@ -49,47 +49,72 @@ def download_and_inspect(url, name):
 df_direction = download_and_inspect(url_direction, "Wind Direction Data")
 df_speed = download_and_inspect(url_speed, "Wind Speed Data")
 
-# Clean and standardize dataframes
-def clean_dataframe(df, data_type):
-    """Clean and standardize dataframes"""
+# Improved data cleaning function
+def clean_dataframe_improved(df, data_type):
+    """Improved data cleaning with better column detection"""
     if df is None or df.empty:
         return None
     
     print(f"\nCleaning {data_type} data...")
+    print(f"Columns found: {list(df.columns)}")
     
-    # Find date column and data column
+    # Try to find date and value columns more intelligently
     date_col = None
-    data_col = None
+    value_col = None
     
+    # Look for date-related columns
     for col in df.columns:
-        sample_data = df[col].dropna().astype(str).head(10)
-        date_pattern = sample_data.str.match(r'^\d{8}$')
-        if date_pattern.any():
+        col_lower = str(col).lower()
+        if any(keyword in col_lower for keyword in ['date', 'time', '日期', '年月日']):
             date_col = col
-            print(f"Found date column: {col}")
-        
-        try:
-            numeric_data = pd.to_numeric(df[col], errors='coerce')
-            if not numeric_data.isna().all() and col != date_col:
-                data_col = col
-                print(f"Found data column: {col}")
-        except:
-            pass
+            print(f"Found potential date column: {col}")
+            break
     
-    if date_col is None or data_col is None:
-        print(f"⚠️ Cannot identify date or data columns for {data_type}")
+    # If no direct date column, try to construct from year/month/day
+    if date_col is None:
+        year_col = month_col = day_col = None
+        for col in df.columns:
+            col_str = str(col).lower()
+            if 'year' in col_str or '年' in col_str:
+                year_col = col
+            elif 'month' in col_str or '月' in col_str:
+                month_col = col
+            elif 'day' in col_str or '日' in col_str:
+                day_col = col
+        
+        if year_col and month_col and day_col:
+            print(f"Found date components: Year={year_col}, Month={month_col}, Day={day_col}")
+            # Construct date column
+            try:
+                df['Date'] = pd.to_datetime(df[[year_col, month_col, day_col]])
+                date_col = 'Date'
+                print("✓ Successfully constructed date column")
+            except Exception as e:
+                print(f"✗ Failed to construct date: {e}")
+    
+    # Look for value column
+    for col in df.columns:
+        col_lower = str(col).lower()
+        if any(keyword in col_lower for keyword in ['value', 'val', '值', '数值', '測值']):
+            value_col = col
+            print(f"Found value column: {col}")
+            break
+    
+    if date_col is None or value_col is None:
+        print(f"⚠️ Cannot identify date ({date_col}) or value ({value_col}) columns for {data_type}")
         return None
     
-    clean_df = df[[date_col, data_col]].copy()
+    # Clean the dataframe
+    clean_df = df[[date_col, value_col]].copy()
     clean_df.columns = ['Date', 'Value']
     clean_df = clean_df.dropna()
     
     print(f"✓ {data_type} cleaned, data count: {len(clean_df)}")
     return clean_df
 
-# Clean data
-df_direction_clean = clean_dataframe(df_direction, "Wind Direction")
-df_speed_clean = clean_dataframe(df_speed, "Wind Speed")
+# Clean data with improved function
+df_direction_clean = clean_dataframe_improved(df_direction, "Wind Direction")
+df_speed_clean = clean_dataframe_improved(df_speed, "Wind Speed")
 
 # If cleaning fails, use sample data
 if df_direction_clean is None or df_speed_clean is None:
@@ -154,6 +179,13 @@ direction_mapping = {
     'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
 }
 
+def get_direction_sector(angle):
+    """Convert angle to 16-point compass direction"""
+    sectors = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 
+               'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+    sector_index = int((angle + 11.25) % 360 / 22.5)
+    return sectors[sector_index]
+
 if df_2024['Direction'].dtype == 'object':
     df_2024['Direction_Angle'] = df_2024['Direction'].map(direction_mapping)
     df_2024 = df_2024.dropna(subset=['Direction_Angle'])
@@ -162,7 +194,7 @@ else:
     df_2024['Direction_Angle'] = df_2024['Direction_Angle'] % 360
     df_2024 = df_2024.dropna(subset=['Direction_Angle'])
 
-# Process wind speed data
+df_2024['Direction_Sector'] = df_2024['Direction_Angle'].apply(get_direction_sector)
 df_2024['Speed'] = pd.to_numeric(df_2024['Speed'], errors='coerce')
 df_2024 = df_2024.dropna(subset=['Speed'])
 
@@ -174,32 +206,23 @@ print("✓ Basic data preprocessing complete!")
 print("\n=== Step 3: Calculate Layer 1 Data with Dynamic Angular Allocation ===")
 
 def calculate_monthly_vector_resultant(month_data):
-    """
-    Calculate the resultant vector for a month's wind data
-    Each day's wind is treated as a vector (direction=angle, magnitude=speed)
-    Returns: resultant_angle (degrees), resultant_magnitude, avg_speed
-    """
+    """Calculate the resultant vector for a month's wind data"""
     if month_data.empty:
         return 0, 0, 0
     
-    # Convert wind direction and speed to vector components
     angles_rad = np.radians(month_data['Direction_Angle'])
     speeds = month_data['Speed']
     
-    # Calculate x and y components of wind vectors
-    x_components = speeds * np.sin(angles_rad)  # East component
-    y_components = speeds * np.cos(angles_rad)  # North component
+    x_components = speeds * np.sin(angles_rad)
+    y_components = speeds * np.cos(angles_rad)
     
-    # Sum all vectors
     sum_x = np.sum(x_components)
     sum_y = np.sum(y_components)
     
-    # Calculate resultant vector
     resultant_magnitude = np.sqrt(sum_x**2 + sum_y**2)
     resultant_angle_rad = np.arctan2(sum_x, sum_y)
     resultant_angle_deg = np.degrees(resultant_angle_rad) % 360
     
-    # Calculate average speed for length scaling
     avg_speed = np.mean(speeds)
     
     return resultant_angle_deg, resultant_magnitude, avg_speed
@@ -214,9 +237,8 @@ for month in range(1, 13):
     if not month_data.empty:
         resultant_angle, resultant_magnitude, avg_speed = calculate_monthly_vector_resultant(month_data)
         
-        # Calculate space requirement based on multiple factors
-        direction_diversity = len(month_data['Direction_Angle'].unique())  # Number of different wind directions
-        wind_activity = avg_speed * len(month_data)  # Total wind activity
+        direction_diversity = len(month_data['Direction_Angle'].unique())
+        wind_activity = avg_speed * len(month_data)
         
         monthly_stats[month] = {
             'resultant_angle': resultant_angle,
@@ -225,13 +247,8 @@ for month in range(1, 13):
             'data_count': len(month_data),
             'direction_diversity': direction_diversity,
             'wind_activity': wind_activity,
-            'space_requirement': wind_activity  # This will determine angular space
+            'space_requirement': wind_activity
         }
-        
-        print(f"Month {month:2d}: Avg Speed={avg_speed:5.1f}, "
-              f"Days={len(month_data)}, "
-              f"Directions={direction_diversity}, "
-              f"Activity={wind_activity:7.1f}")
     else:
         monthly_stats[month] = {
             'resultant_angle': 0,
@@ -240,30 +257,20 @@ for month in range(1, 13):
             'data_count': 0,
             'direction_diversity': 0,
             'wind_activity': 0,
-            'space_requirement': 1  # Minimum space
+            'space_requirement': 1
         }
-        print(f"Month {month:2d}: No data")
 
-print("\n2. Calculating dynamic angular allocation...")
-
-# Calculate total space requirement
+# Dynamic angular allocation
 total_space = sum([stats['space_requirement'] for stats in monthly_stats.values()])
-total_angle = 360  # degrees
+total_angle = 360
 
-# Calculate angular allocation for each month
 cumulative_angle = 0
 month_angles = {}
 
 for month in range(1, 13):
     space_req = monthly_stats[month]['space_requirement']
-    
-    # Calculate the angular space for this month
     angular_space = (space_req / total_space) * total_angle
-    
-    # Ensure minimum angular space (at least 15 degrees)
     angular_space = max(angular_space, 15)
-    
-    # Calculate the center angle for this month
     center_angle = cumulative_angle + (angular_space / 2)
     
     month_angles[month] = {
@@ -274,20 +281,9 @@ for month in range(1, 13):
     }
     
     cumulative_angle += angular_space
-    
-    month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    
-    print(f"{month_names[month-1]}: "
-          f"Center={center_angle:6.1f}°, "
-          f"Space={angular_space:5.1f}°, "
-          f"Activity={space_req:7.1f}")
 
-# Normalize if total exceeds 360
 if cumulative_angle > 360:
-    print(f"\n⚠️ Total angle exceeds 360° ({cumulative_angle:.1f}°), normalizing...")
     scale_factor = 360 / cumulative_angle
-    
     cumulative_angle = 0
     for month in range(1, 13):
         angular_space = month_angles[month]['angular_space'] * scale_factor
@@ -302,8 +298,6 @@ if cumulative_angle > 360:
         
         cumulative_angle += angular_space
 
-print("\n3. Preparing final stem parameters...")
-
 # Calculate final parameters for Layer 1 visualization
 stem_params = {}
 max_avg_speed = max([data['avg_speed'] for data in monthly_stats.values()] + [1])
@@ -312,13 +306,11 @@ for month in range(1, 13):
     stats = monthly_stats[month]
     angles = month_angles[month]
     
-    # Calculate stem length (normalized by max average speed)
     if max_avg_speed > 0:
-        stem_length = 0.3 + (stats['avg_speed'] / max_avg_speed) * 0.7  # Range: 0.3 to 1.0
+        stem_length = 0.3 + (stats['avg_speed'] / max_avg_speed) * 0.7
     else:
         stem_length = 0.3
     
-    # Use the dynamically allocated center angle
     stem_angle = angles['center_angle']
     stem_angle_rad = np.radians(stem_angle)
     
@@ -332,54 +324,89 @@ for month in range(1, 13):
         'angular_space': angles['angular_space'],
         'wind_activity': stats['wind_activity']
     }
-    
-    month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    
-    print(f"{month_names[month-1]}: "
-          f"Angle={stem_angle:6.1f}°, "
-          f"Length={stem_length:4.2f}, "
-          f"Space={angles['angular_space']:5.1f}°")
 
 print("\n✓ Step 3 Complete - Dynamic angular allocation ready!")
 
-# Continue with Layer 0 and Layer 1 drawing...
-# (Rest of the code remains the same for now)
+# =================================
+# Step 4: Calculate Layer 2 Data
+# =================================
+print("\n=== Step 4: Calculate Layer 2 Data ===")
+
+compass_directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 
+                     'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+
+compass_angles = {
+    'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
+    'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
+    'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5,
+    'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
+}
+
+# Define direction colors
+direction_colors = {
+    'N': '#1f77b4', 'NNE': '#ff7f0e', 'NE': '#2ca02c', 'ENE': '#d62728',
+    'E': '#9467bd', 'ESE': '#8c564b', 'SE': '#e377c2', 'SSE': '#7f7f7f',
+    'S': '#bcbd22', 'SSW': '#17becf', 'SW': '#aec7e8', 'WSW': '#ffbb78',
+    'W': '#98df8a', 'WNW': '#ff9896', 'NW': '#c5b0d5', 'NNW': '#c49c94'
+}
+
+# Calculate direction frequency for each month
+tendrils_data = {}
+for month in range(1, 13):
+    month_data = df_2024[df_2024['Month'] == month].copy()
+    tendrils_data[month] = {}
+    
+    if not month_data.empty:
+        direction_counts = month_data['Direction_Sector'].value_counts()
+        total_days = len(month_data)
+        
+        for direction in compass_directions:
+            frequency = direction_counts.get(direction, 0)
+            frequency_ratio = frequency / total_days if total_days > 0 else 0
+            
+            direction_data = month_data[month_data['Direction_Sector'] == direction]
+            
+            tendrils_data[month][direction] = {
+                'frequency': frequency,
+                'frequency_ratio': frequency_ratio,
+                'daily_data': direction_data[['Date', 'Speed']].sort_values('Date').to_dict('records')
+            }
+    else:
+        for direction in compass_directions:
+            tendrils_data[month][direction] = {
+                'frequency': 0,
+                'frequency_ratio': 0,
+                'daily_data': []
+            }
+
+print("\n✓ Step 4 Complete - Direction frequencies calculated!")
 
 # =================================
-# Step 4: Calculate Layer 0 Centroid and Draw Layer 1
+# Step 5: Draw All Layers
 # =================================
-print("\n=== Step 4: Calculate Layer 0 Centroid and Draw Layer 1 ===")
+print("\n=== Step 5: Draw All Layers ===")
 
 def calculate_centroid(stem_params):
-    """
-    Calculate the centroid (Layer 0) based on Layer 1 stem endpoints
-    The centroid is determined by the weighted center of all stem endpoints
-    """
-    # Calculate endpoints of all stems
+    """Calculate the centroid (Layer 0)"""
     endpoints_x = []
     endpoints_y = []
     weights = []
     
     for month, params in stem_params.items():
-        if params['data_count'] > 0:  # Only consider months with data
+        if params['data_count'] > 0:
             angle_rad = params['angle_rad']
             length = params['length']
             
-            # Calculate endpoint coordinates
             x = length * np.sin(angle_rad)
             y = length * np.cos(angle_rad)
             
             endpoints_x.append(x)
             endpoints_y.append(y)
-            
-            # Weight by wind activity (stronger influence for more active months)
             weights.append(params['wind_activity'])
     
     if not endpoints_x:
-        return 0, 0  # Default center if no data
+        return 0, 0
     
-    # Calculate weighted centroid
     weights = np.array(weights)
     total_weight = np.sum(weights)
     
@@ -392,21 +419,16 @@ def calculate_centroid(stem_params):
     
     return centroid_x, centroid_y
 
-# Calculate the centroid
-print("1. Calculating centroid position...")
+# Calculate centroid
 centroid_x, centroid_y = calculate_centroid(stem_params)
 centroid_radius = np.sqrt(centroid_x**2 + centroid_y**2)
 centroid_angle = np.arctan2(centroid_x, centroid_y)
 
 print(f"Centroid position: x={centroid_x:.3f}, y={centroid_y:.3f}")
-print(f"Centroid polar: radius={centroid_radius:.3f}, angle={np.degrees(centroid_angle):.1f}°")
 
-# Create the visualization
-print("\n2. Creating visualization...")
-
-# Setup figure
+# Create visualization
 plt.style.use('default')
-fig, ax = plt.subplots(figsize=(16, 16), subplot_kw=dict(projection='polar'))
+fig, ax = plt.subplots(figsize=(20, 20), subplot_kw=dict(projection='polar'))
 ax.set_facecolor('#fafafa')
 ax.set_theta_zero_location('N')
 ax.set_theta_direction(-1)
@@ -414,114 +436,134 @@ ax.grid(False)
 ax.set_xticklabels([])
 ax.set_yticklabels([])
 
-print("3. Drawing Layer 0: The Nexus...")
-
-# Layer 0: Draw the nexus (convergence region)
+print("Drawing Layer 0: The Nexus...")
 ax.scatter([centroid_angle], [centroid_radius], 
            c='#2c3e50', s=800, alpha=0.8, marker='o', 
            edgecolors='white', linewidth=2, zorder=10)
 
-print("4. Drawing Layer 1: Primary Stems with Dynamic Spacing...")
-
-# Layer 1: Draw the 12 primary stems
+print("Drawing Layer 1: Primary Stems...")
 month_names = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
                'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
-# Draw stems from centroid to their endpoints
 for month, params in stem_params.items():
     if params['data_count'] > 0:
         angle_rad = params['angle_rad']
         length = params['length']
         angular_space = params['angular_space']
         
-        # Draw the stem
         stem_angles = [centroid_angle, angle_rad]
         stem_radii = [centroid_radius, length]
         
-        # Vary stem thickness based on angular space (more space = thicker stem)
-        stem_thickness = 3 + (angular_space / 40) * 3  # Range: 3-6
+        stem_thickness = 3 + (angular_space / 40) * 3
         
         ax.plot(stem_angles, stem_radii, 
                 color='#34495e', linewidth=stem_thickness, alpha=0.8, 
                 solid_capstyle='round', zorder=5)
         
-        # Add month label at stem endpoint
-        label_radius = length + 0.15
+        label_radius = length + 0.4
         ax.text(angle_rad, label_radius, month_names[month-1], 
                 ha='center', va='center', fontsize=11, fontweight='bold',
                 color='#2c3e50', 
                 rotation=np.degrees(angle_rad)-90 if angle_rad > np.pi/2 and angle_rad < 3*np.pi/2 else np.degrees(angle_rad)+90,
                 zorder=15)
         
-        # Add endpoint marker (size based on activity level)
         marker_size = 80 + (params['wind_activity'] / max([p['wind_activity'] for p in stem_params.values()])) * 120
         ax.scatter([angle_rad], [length], 
                    c='#34495e', s=marker_size, alpha=0.9, marker='o', 
                    edgecolors='white', linewidth=1, zorder=8)
 
-print("5. Adding compass directions...")
+print("Drawing Layer 2: Radial Tendrils from Stem Endpoints...")
 
-# Add compass directions for reference
-compass_directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
-compass_angles = [0, 45, 90, 135, 180, 225, 270, 315]
+# Draw tendrils for each month
+for month, params in stem_params.items():
+    if params['data_count'] > 0:
+        # Calculate maximum frequency for this month (for scaling)
+        month_frequencies = [tendrils_data[month][direction]['frequency'] for direction in compass_directions]
+        max_frequency = max(month_frequencies) if max(month_frequencies) > 0 else 1
+        
+        # Draw tendril for each direction
+        for i, direction in enumerate(compass_directions):
+            tendril_data = tendrils_data[month][direction]
+            frequency = tendril_data['frequency']
+            
+            if frequency > 0:
+                # Calculate tendril angle: evenly distributed around the stem endpoint
+                relative_angle = i * (2 * np.pi / 16)  # 0, π/8, π/4, 3π/8...
+                tendril_angle = params['angle_rad'] + relative_angle
+                
+                # Calculate tendril length based on frequency
+                tendril_length = (frequency / max_frequency) * 0.15  # Max length 0.15
+                
+                # Calculate tendril thickness based on frequency
+                tendril_thickness = (frequency / max_frequency) * 1.5 + 0.3  # Range 0.3-1.8
+                
+                # Calculate tendril start and end points
+                tendril_start_radius = params['length']
+                tendril_end_radius = params['length'] + tendril_length
+                
+                # Draw the tendril
+                ax.plot([tendril_angle, tendril_angle], 
+                       [tendril_start_radius, tendril_end_radius],
+                       color=direction_colors[direction], 
+                       linewidth=tendril_thickness, 
+                       alpha=0.7, 
+                       solid_capstyle='round', 
+                       zorder=6)
+                
+                # Add small endpoint marker
+                ax.scatter([tendril_angle], [tendril_end_radius],
+                          c=direction_colors[direction], 
+                          s=6 + frequency * 1, 
+                          alpha=0.8, 
+                          marker='o',
+                          edgecolors='white', 
+                          linewidth=0.2,
+                          zorder=7)
 
-for direction, angle in zip(compass_directions, compass_angles):
+print("Adding compass directions...")
+compass_display_directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+compass_display_angles = [0, 45, 90, 135, 180, 225, 270, 315]
+
+for direction, angle in zip(compass_display_directions, compass_display_angles):
     angle_rad = np.radians(angle)
-    compass_radius = 1.4
+    compass_radius = 2.2
     
     ax.text(angle_rad, compass_radius, direction, 
             ha='center', va='center', fontsize=10, 
             color='#7f8c8d', alpha=0.7, family='monospace')
 
 # Add reference circles
-for radius in [0.5, 1.0]:
+for radius in [0.5, 1.0, 1.5]:
     circle = plt.Circle((0, 0), radius, fill=False, 
                        color='#bdc3c7', alpha=0.3, linewidth=0.5)
     ax.add_patch(circle)
 
-# Set axis limits
-ax.set_ylim(0, 1.6)
+ax.set_ylim(0, 2.4)
 
-print("6. Adding title and descriptions...")
+# Add title and descriptions
+fig.suptitle('METEOROLOGICAL DANDELION - Fixed Version\nHong Kong International Airport 2024', 
+             fontsize=20, fontweight='bold', color='#2c3e50', y=0.95)
 
-# Add title
-fig.suptitle('METEOROLOGICAL DANDELION - Dynamic Angular Allocation\nHong Kong International Airport 2024', 
-             fontsize=18, fontweight='bold', color='#2c3e50', y=0.95)
-
-# Add description
 fig.text(0.5, 0.88, 
-         'Layer 0: Data-driven Centroid | Layer 1: Chronologically Ordered Stems with Activity-based Spacing', 
-         ha='center', va='center', fontsize=12, style='italic', color='#7f8c8d')
+         'Layer 0: Centroid | Layer 1: Monthly Stems | Layer 2: Radial Direction Tendrils', 
+         ha='center', va='center', fontsize=14, style='italic', color='#7f8c8d')
 
-# Add technical details
 fig.text(0.02, 0.02, 
-         'Dynamic Angular Allocation: Month sequence preserved, angular space ∝ wind activity\n'
-         'Layer 0: Centroid weighted by monthly wind activity\n'
-         'Layer 1: 12 Primary Stems - Sequential order, Length ∝ Avg wind speed, Space ∝ Total wind activity\n'
-         f'Centroid Position: ({centroid_x:.3f}, {centroid_y:.3f})\n\n'
-         'Next: Layer 2 (Secondary Tendrils) - 16 wind directions per month',
+         'Layer 2: 16 direction tendrils radiating from each month\'s stem endpoint\n'
+         'Tendril length ∝ Direction frequency in that month\n'
+         'Tendril thickness ∝ Direction frequency\n'
+         'Color coding: Each compass direction has unique color\n\n'
+         'Next: Layer 3 (Seed Puffs) - Daily wind data as expanding fans',
          fontsize=9, color='#7f8c8d', verticalalignment='bottom', family='monospace')
 
-print("7. Saving visualization...")
-
-# Save the current layer
 plt.tight_layout()
-output_filename = 'Meteorological_Dandelion_DynamicAngular_HKA_2024.png'
+output_filename = 'Meteorological_Dandelion_FIXED_HKA_2024.png'
 plt.savefig(output_filename, dpi=300, bbox_inches='tight', 
             facecolor='#fafafa', edgecolor='none')
 
-print(f"✓ Dynamic angular allocation visualization saved as: {output_filename}")
-
-# Display the plot
+print(f"✓ FIXED visualization saved as: {output_filename}")
 plt.show()
 
-print("\n✓ Step 4 Complete!")
-print(f"\nDynamic Angular Allocation Summary:")
-print(f"- Months arranged in chronological order around the circle")
-print(f"- Angular space for each month determined by wind activity level")
-print(f"- High-activity months get more space for future Layer 2 tendrils")
-print(f"- Centroid weighted by monthly wind activity")
-print(f"- Ready for Layer 2 calculation (Secondary Tendrils)")
-
-print(f"\n=== Ready for Step 5: Calculate and Draw Layer 2 ===")
-print("The dynamic angular allocation provides optimal space for wind direction tendrils!")
+print("\n✓ All errors fixed!")
+print("Layer 2 now shows radial tendrils from each stem endpoint like dandelion seeds!")
+print("Ready for Layer 3!")
