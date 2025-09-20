@@ -64,7 +64,7 @@ class MeteorologicalDandelion:
                 if response.status_code == 200:
                     df = pd.read_csv(StringIO(response.text), encoding='utf-8-sig', skiprows=2)
                     datasets[name] = df
-                    print(f"✓ {name} 数据获取成功")
+                    print(f"✓ {name} data fetched successfully")
                 else:
                     raise Exception(f"数据下载失败: {response.status_code}")
             
