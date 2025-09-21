@@ -22,7 +22,14 @@ from matplotlib.patches import Circle, Wedge
 from matplotlib.collections import LineCollection
 from datetime import datetime
 import warnings
+import sys
+import locale
+
 warnings.filterwarnings('ignore')
+
+# 输出系统和本地编码
+print(f"系统编码: {sys.stdout.encoding}")
+print(f"本地编码: {locale.getpreferredencoding()}")
 
 # 设置中文字体支持和高质量渲染
 plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
@@ -127,6 +134,91 @@ class EnhancedWindFlowerVisualizer:
         
         return self.combined_data
     
+    def create_enhanced_annotation(self, fig, ax):
+        """创建优化的图形化注释区域"""
+        
+        # 季节色彩定义
+        season_palettes = {
+            'Spring': ['#FFB3E6', '#FF80DF', '#FF4DD8', '#FF1AD1'],  # 樱花粉
+            'Summer': ['#B3FFB3', '#80FF80', '#4DFF4D', '#1AFF1A'],  # 翠绿色
+            'Autumn': ['#FFD1B3', '#FFBB80', '#FFA54D', '#FF8F1A'],  # 金橙色  
+            'Winter': ['#B3E6FF', '#80D9FF', '#4DCCFF', '#1ABFFF']   # 冰蓝色
+        }
+        
+        # 月份颜色映射
+        month_colors = {
+            3: season_palettes['Spring'][2], 4: season_palettes['Spring'][3], 5: season_palettes['Spring'][0],
+            6: season_palettes['Summer'][1], 7: season_palettes['Summer'][2], 8: season_palettes['Summer'][3],
+            9: season_palettes['Autumn'][0], 10: season_palettes['Autumn'][1], 11: season_palettes['Autumn'][2],
+            12: season_palettes['Winter'][3], 1: season_palettes['Winter'][0], 2: season_palettes['Winter'][1]
+        }
+        
+        # 创建精确适应内容的注释背景 - 进一步缩小右边距
+        annotation_bg = plt.Rectangle((0.01, 0.01), 0.33, 0.16, 
+                                    transform=fig.transFigure, 
+                                    facecolor='black', alpha=0.85, 
+                                    edgecolor='white', linewidth=1)
+        fig.patches.append(annotation_bg)
+        
+        # 主标题 - 调整位置适应新框架
+        plt.figtext(0.02, 0.15, '数据统计 & 可视化说明', 
+                   fontsize=14, fontweight='bold', color='#FFD700')
+        
+        # 数据统计部分 - 调整位置
+        stats_line1 = f"• 总记录数: {len(self.combined_data)}  • 风向范围: {self.combined_data['direction'].min():.0f}°-{self.combined_data['direction'].max():.0f}°"
+        stats_line2 = f"• 风速范围: {self.combined_data['speed'].min():.1f}-{self.combined_data['speed'].max():.1f} km/h  • 平均风速: {self.combined_data['speed'].mean():.1f} km/h"
+        
+        plt.figtext(0.02, 0.13, stats_line1, fontsize=9, color='white')
+        plt.figtext(0.02, 0.12, stats_line2, fontsize=9, color='white')
+        
+        # 可视化说明 - 调整位置
+        plt.figtext(0.02, 0.10, '可视化原理: 同心圆=月份 (1月=内圈→12月=外圈) | 角度=风向 | 距离=风速', 
+                   fontsize=9, color='white')
+        
+        # 季节色彩系统标题 - 调整位置
+        plt.figtext(0.02, 0.08, '季节色彩渐变系统', 
+                   fontsize=11, fontweight='bold', color='white')
+        
+        # 绘制季节色彩 - 调整位置适应新框架
+        seasons_layout = [
+            [('春季 Spring', [3, 4, 5], 0.02, 0.06), ('夏季 Summer', [6, 7, 8], 0.18, 0.06)],
+            [('秋季 Autumn', [9, 10, 11], 0.02, 0.04), ('冬季 Winter', [12, 1, 2], 0.18, 0.04)]
+        ]
+        
+        for row in seasons_layout:
+            for season_name, months, x_pos, y_pos in row:
+                # 季节渐变方块
+                season_key = season_name.split()[1]
+                if season_key in season_palettes:
+                    colors = season_palettes[season_key]
+                    main_color = colors[1]
+                    season_rect = plt.Rectangle((x_pos, y_pos-0.003), 0.012, 0.012, 
+                                              transform=fig.transFigure,
+                                              facecolor=main_color, alpha=0.8)
+                    fig.patches.append(season_rect)
+                
+                # 季节标题
+                plt.figtext(x_pos + 0.016, y_pos, season_name, 
+                           fontsize=9, fontweight='bold', color='white')
+                
+                # 月份圆点 - 水平排列在季节名后
+                month_x_start = x_pos + 0.08
+                for i, month in enumerate(months):
+                    month_color = month_colors[month]
+                    month_circle = plt.Circle((month_x_start + i*0.025, y_pos+0.005), 0.004,
+                                            transform=fig.transFigure,
+                                            facecolor=month_color, alpha=0.8,
+                                            edgecolor='white', linewidth=0.5)
+                    fig.patches.append(month_circle)
+                    
+                    # 月份标签
+                    plt.figtext(month_x_start + i*0.025, y_pos-0.01, f'{month}月',
+                               fontsize=7, color='white', ha='center')
+        
+        # 底部说明 - 紧贴季节信息，减少间距
+        plt.figtext(0.02, 0.08, '注: 点的大小反映风速强度，颜色表示月份/季节',
+                   fontsize=8, color='#CCCCCC', style='italic')
+    
     def create_enhanced_wind_flower(self, save_path="香港机场2024年精美风之花朵.png"):
         """创建增强版风之花朵可视化"""
         print("🌸 正在创建精美风之花朵可视化...")
@@ -181,23 +273,23 @@ class EnhancedWindFlowerVisualizer:
                 ax.scatter(angle, radius, s=point_size, c=main_color, 
                           alpha=0.8, edgecolors='white', linewidth=0.5)
         
-        # 添加精美的同心圆环
+        # 同心圆环
         for month in range(1, 13):
-            circle_color = '#ffffff'
-            circle_alpha = 0.15
+            circle_color = "#ffffff"
+            circle_alpha = 0.02  
             
             # 主圆环
             circle = Circle((0, 0), month * 1.0, fill=False, 
                           color=circle_color, alpha=circle_alpha, linewidth=1)
             ax.add_patch(circle)
         
-        # 添加月份标签（更加精美）
-        month_names = ['1月', '2月', '3月', '4月', '5月', '6月', 
-                      '7月', '8月', '9月', '10月', '11月', '12月']
-        
+        # 添加月份标签
+        month_names = ['Mon', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
         for month in range(1, 13):
             radius_pos = month * 1.0 + 0.3
-            ax.text(np.pi/2, radius_pos, month_names[month-1], 
+            ax.text(np.pi, radius_pos, month_names[month-1], 
                    ha='center', va='center', color='white', 
                    fontsize=12, fontweight='bold',
                    bbox=dict(boxstyle="round,pad=0.3", facecolor='black', alpha=0.7))
@@ -215,33 +307,43 @@ class EnhancedWindFlowerVisualizer:
         # 设置半径范围和标签
         ax.set_ylim(0, 14)
         ax.set_yticks(np.arange(2, 14, 2))
-        ax.set_yticklabels([f'{i}月环' for i in np.arange(2, 14, 2)], 
-                          color='white', fontsize=10)
+        
         
         # 美化网格
-        ax.grid(True, alpha=0.2, color='white', linestyle='--')
+        ax.grid(True, alpha=0.3, color='white', linestyle='--')
         ax.set_facecolor('#0a0a0a')
         
         # 精美标题
-        title_text = '🌸 香港国际机场2024年风之花朵 🌸\n' + \
+        title_text = '🌸 香港国际机场2024年风之花朵 \n' + \
                     'Wind Rose Flower - Hong Kong International Airport 2024\n' + \
                     '每片花瓣诉说着天空的故事'
-        
+
         plt.suptitle(title_text, fontsize=24, color='white', 
                     y=0.95, fontweight='bold', 
                     bbox=dict(boxstyle="round,pad=0.5", facecolor='black', alpha=0.8))
         
         # 创建季节色彩图例
         season_legend_elements = []
-        for season, colors in season_palettes.items():
-            season_legend_elements.append(
-                plt.scatter([], [], s=100, c=colors[1], alpha=0.8, 
-                          edgecolors='white', label=f'{season}'))
+        
+        # 为每个季节创建详细的月份-颜色对应
+        season_month_mapping = {
+            'Spring 🌸': [(3, '#FF4DD8'), (4, '#FF1AD1'), (5, '#FFB3E6')],
+            'Summer 🌿': [(6, '#80FF80'), (7, '#4DFF4D'), (8, '#1AFF1A')],
+            'Autumn 🍂': [(9, '#FFD1B3'), (10, '#FFBB80'), (11, '#FFA54D')],
+            'Winter ❄️': [(12, '#1ABFFF'), (1, '#B3E6FF'), (2, '#80D9FF')]
+        }
+        
+        for season, month_colors in season_month_mapping.items():
+            for month, color in month_colors:
+                season_legend_elements.append(
+                    plt.scatter([], [], s=120, c=color, alpha=0.9, 
+                              edgecolors='white', linewidth=1,
+                              label=f'{month}月 ({season.split()[0]})'))
         
         legend1 = ax.legend(handles=season_legend_elements, 
-                           title='🌻 季节色彩 Seasonal Colors', 
-                           loc='upper left', bbox_to_anchor=(-0.1, 1.0),
-                           title_fontsize=14, fontsize=12,
+                           title='� 月份色彩对照 Monthly Color Guide', 
+                           loc='upper left', bbox_to_anchor=(-0.15, 1.0),
+                           title_fontsize=12, fontsize=10, ncol=2,
                            facecolor='black', edgecolor='white', framealpha=0.9)
         legend1.get_title().set_color('white')
         for text in legend1.get_texts():
@@ -265,25 +367,8 @@ class EnhancedWindFlowerVisualizer:
         for text in legend2.get_texts():
             text.set_color('white')
         
-        # 数据统计信息
-        stats_text = f"""
-数据统计 Data Statistics:
-• 总记录数 Total Records: {len(self.combined_data)}
-• 风向范围 Wind Direction: {self.combined_data['direction'].min():.0f}° - {self.combined_data['direction'].max():.0f}°
-• 风速范围 Wind Speed: {self.combined_data['speed'].min():.1f} - {self.combined_data['speed'].max():.1f} km/h
-• 平均风速 Average Speed: {self.combined_data['speed'].mean():.1f} km/h
-
-可视化说明 Visualization Guide:
-• 每个同心圆代表一个月份
-• 点的角度表示风向，距离中心远近表示风速
-• 颜色按季节分布：春粉、夏绿、秋橙、冬蓝
-• 点的大小也反映风速强度
-        """
-        
-        plt.figtext(0.02, 0.02, stats_text.strip(), 
-                   fontsize=11, color='white', 
-                   bbox=dict(boxstyle="round,pad=0.5", facecolor='black', alpha=0.8),
-                   verticalalignment='bottom')
+        # 创建优化的图形化注释区域
+        self.create_enhanced_annotation(fig, ax)
         
         # 艺术签名
         plt.figtext(0.98, 0.02, 
