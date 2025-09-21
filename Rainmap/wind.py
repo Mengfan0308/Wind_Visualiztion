@@ -215,101 +215,190 @@ class MeteorologicalDandelion:
         }
 
     def calculate_layer1_stems(self, layer0_data, df):
-        """Recalculate Layer 1: Precise Mapping of Monthly Stems"""
-        print("\n🌱 Recalculating Layer 1: Monthly Stems...")
+        """Layer 1: 主线 (Primary Stems | 代表"月")
         
-        centroid = layer0_data['centroid']
+        视觉表现：12条深灰色的、粗细统一的细线
+        数据映射A（长度）：主线长度为该月的平均风速
+        数据映射B（角度分布）：主线的发射角度由该月所有风数据的向量合力方向决定
+        """
+        print("\n🌱 Layer 1: 计算月度主线...")
         
-        # Calculate monthly precise data
         stems_data = {}
-        monthly_avg_speeds = {}
-        monthly_vector_sums = {}
+        monthly_speeds = []  # 用于归一化
         
-        # Step 1: Calculate monthly average speed and vector sum
+        # 计算每个月的数据
         for month in range(1, 13):
             month_data = df[df['Month'] == month].copy()
             
             if not month_data.empty:
-                # A. Calculate monthly average wind speed (for length mapping)
+                # 数据映射A：长度 = 月平均风速
                 avg_speed = month_data['Speed'].mean()
-                monthly_avg_speeds[month] = avg_speed
+                monthly_speeds.append(avg_speed)
                 
-                # B. Calculate monthly wind data vector sum (for angle mapping)
+                # 数据映射B：角度 = 月风数据向量合力方向
                 angles_rad = np.radians(month_data['Direction_Angle'])
                 speeds = month_data['Speed']
                 
-                # Treat each day's wind data as vector, calculate sum
-                x_sum = np.sum(speeds * np.sin(angles_rad))
-                y_sum = np.sum(speeds * np.cos(angles_rad))
+                # 计算向量合力
+                x_component = np.sum(speeds * np.sin(angles_rad))
+                y_component = np.sum(speeds * np.cos(angles_rad))
+                resultant_angle = np.degrees(np.arctan2(x_component, y_component)) % 360
                 
-                # Direction angle of resultant vector
-                resultant_angle = np.degrees(np.arctan2(x_sum, y_sum)) % 360
-                resultant_magnitude = np.sqrt(x_sum**2 + y_sum**2)
+                print(f"月份 {month:2d}: 平均风速 {avg_speed:.1f} km/h, 主导方向 {resultant_angle:.1f}°")
                 
-                monthly_vector_sums[month] = {
+                stems_data[month] = {
+                    'avg_speed': avg_speed,
                     'angle': resultant_angle,
-                    'magnitude': resultant_magnitude,
-                    'x_sum': x_sum,
-                    'y_sum': y_sum
+                    'angle_rad': np.radians(resultant_angle)
                 }
-                
-                print(f"Month {month:2d}: Avg Speed {avg_speed:.1f} km/h, Dominant Dir {resultant_angle:.1f}°")
             else:
-                monthly_avg_speeds[month] = 0
-                monthly_vector_sums[month] = {
+                monthly_speeds.append(0)
+                stems_data[month] = {
+                    'avg_speed': 0,
                     'angle': 0,
-                    'magnitude': 0,
-                    'x_sum': 0,
-                    'y_sum': 0
+                    'angle_rad': 0
                 }
         
-        # Step 2: Calculate stem parameters
-        max_avg_speed = max(monthly_avg_speeds.values()) if monthly_avg_speeds.values() else 1
+        # 归一化长度：最大风速月份的主线最长
+        max_speed = max(monthly_speeds) if monthly_speeds else 1
+        min_length, max_length = 0.3, 1.2  # 主线长度范围
         
         for month in range(1, 13):
-            avg_speed = monthly_avg_speeds[month]
-            vector_sum = monthly_vector_sums[month]
+            avg_speed = stems_data[month]['avg_speed']
             
-            # Data Mapping A: Length = Monthly average wind speed relative ratio
-            base_length = 0.3  # Minimum length
-            max_length = 1.2   # Maximum length
-            if max_avg_speed > 0:
-                stem_length = base_length + (avg_speed / max_avg_speed) * (max_length - base_length)
+            # 按比例确定长度
+            if max_speed > 0:
+                normalized_length = avg_speed / max_speed
+                stem_length = min_length + normalized_length * (max_length - min_length)
             else:
-                stem_length = base_length
+                stem_length = min_length
             
-            # Data Mapping B: Angle = Monthly wind data vector resultant direction
-            stem_angle = vector_sum['angle']
-            
-            # Uniform stem thickness (as per design requirement)
-            stem_thickness = 2.5  # Uniform thickness
-            
-            # Calculate stem endpoint coordinates (from convergence center)
-            stem_angle_rad = np.radians(stem_angle)
-            end_x = stem_length * np.sin(stem_angle_rad)
-            end_y = stem_length * np.cos(stem_angle_rad)
-            
-            stems_data[month] = {
+            stems_data[month].update({
                 'length': stem_length,
-                'thickness': stem_thickness,
-                'angle': stem_angle,
-                'angle_rad': stem_angle_rad,
-                'end_x': end_x,
-                'end_y': end_y,
-                'avg_speed': avg_speed,
-                'vector_magnitude': vector_sum['magnitude'],
-                'data_basis': {
-                    'avg_speed_ratio': avg_speed / max_avg_speed if max_avg_speed > 0 else 0,
-                    'resultant_vector': vector_sum
-                }
-            }
+                'thickness': 2.5,  # 统一粗细
+            })
         
-        print(f"✓ Recalculated 12 monthly stems:")
-        print(f"  - Longest stem: {max(s['length'] for s in stems_data.values()):.2f} (month with highest avg speed)")
-        print(f"  - Shortest stem: {min(s['length'] for s in stems_data.values()):.2f}")
-        print(f"  - Angle distribution: Determined by monthly wind data vector resultants (non-uniform)")
+        print(f"✓ 12条主线计算完成：")
+        print(f"  - 最长主线: {max(s['length'] for s in stems_data.values()):.2f}")
+        print(f"  - 最短主线: {min(s['length'] for s in stems_data.values()):.2f}")
+        print(f"  - 角度分布: 非均匀（由月度风向量决定）")
         
         return stems_data
+
+    def calculate_layer2_tendrils(self, layer1_data, df):
+        """Layer 2: 须须 (Secondary Tendrils | 代表"风向")
+        
+        视觉表现：从主线（Layer 1）的末端发出的、与主线粗细一致的线
+        数据映射A（角度）：须须的发射角度严格遵循真实地理方位（16个方位）
+        数据映射B（长度）：须须长度 ∝ 该风向在该月出现的频率（天数）
+        """
+        print("\n🌿 Layer 2: 计算风向须须...")
+        
+        # 定义16个绝对罗盘方向 (0°=N, 90°=E, 180°=S, 270°=W)
+        directions_16 = {
+            'N': 0,      'NNE': 22.5,  'NE': 45,     'ENE': 67.5,
+            'E': 90,     'ESE': 112.5, 'SE': 135,    'SSE': 157.5,
+            'S': 180,    'SSW': 202.5, 'SW': 225,    'WSW': 247.5,
+            'W': 270,    'WNW': 292.5, 'NW': 315,    'NNW': 337.5
+        }
+        
+        tendrils_data = {}
+        
+        # 为每个月计算16个风向的须须
+        for month in range(1, 13):
+            month_data = df[df['Month'] == month].copy()
+            month_tendrils = {}
+            
+            if not month_data.empty:
+                # 统计该月每个风向的出现天数
+                direction_counts = {}
+                for direction_name, direction_angle in directions_16.items():
+                    # 计算该风向在本月的出现频率
+                    tolerance = 11.25  # ±11.25°容差
+                    lower_bound = (direction_angle - tolerance) % 360
+                    upper_bound = (direction_angle + tolerance) % 360
+                    
+                    if lower_bound < upper_bound:
+                        count = len(month_data[
+                            (month_data['Direction_Angle'] >= lower_bound) & 
+                            (month_data['Direction_Angle'] < upper_bound)
+                        ])
+                    else:  # 跨越0°边界
+                        count = len(month_data[
+                            (month_data['Direction_Angle'] >= lower_bound) | 
+                            (month_data['Direction_Angle'] < upper_bound)
+                        ])
+                    
+                    direction_counts[direction_name] = count
+                
+                # 找出最大出现天数用于归一化
+                max_count = max(direction_counts.values()) if direction_counts.values() else 1
+                active_directions = sum(1 for count in direction_counts.values() if count > 0)
+                max_direction = max(direction_counts.items(), key=lambda x: x[1])
+                
+                print(f"月份 {month:2d}: {active_directions}/16个方向活跃, 最多: {max_direction[0]} ({max_direction[1]}天)")
+                
+                # 为每个风向生成须须
+                for direction_name, direction_angle in directions_16.items():
+                    count = direction_counts[direction_name]
+                    
+                    if count > 0:  # 只为出现过的风向生成须须
+                        # 数据映射B：长度 ∝ 该风向出现频率
+                        min_length, max_length = 0.1, 0.4
+                        normalized_frequency = count / max_count if max_count > 0 else 0
+                        tendril_length = min_length + normalized_frequency * (max_length - min_length)
+                        
+                        # 数据映射A：角度 = 绝对罗盘方向
+                        tendril_angle = direction_angle
+                        
+                        # 须须粗细与主线一致
+                        tendril_thickness = 2.5
+                        
+                        month_tendrils[direction_name] = {
+                            'length': tendril_length,
+                            'thickness': tendril_thickness,
+                            'angle': tendril_angle,
+                            'angle_rad': np.radians(tendril_angle),
+                            'frequency': count,
+                            'frequency_ratio': normalized_frequency
+                        }
+                    else:
+                        # 未出现的风向不生成须须
+                        month_tendrils[direction_name] = {
+                            'length': 0,
+                            'thickness': 0,
+                            'angle': direction_angle,
+                            'angle_rad': np.radians(direction_angle),
+                            'frequency': 0,
+                            'frequency_ratio': 0
+                        }
+            else:
+                # 该月无数据
+                for direction_name, direction_angle in directions_16.items():
+                    month_tendrils[direction_name] = {
+                        'length': 0,
+                        'thickness': 0,
+                        'angle': direction_angle,
+                        'angle_rad': np.radians(direction_angle),
+                        'frequency': 0,
+                        'frequency_ratio': 0
+                    }
+            
+            tendrils_data[month] = month_tendrils
+        
+        # 统计总体信息
+        total_tendrils = sum(
+            sum(1 for t in month_tendrils.values() if t['frequency'] > 0)
+            for month_tendrils in tendrils_data.values()
+        )
+        
+        print(f"✓ 须须计算完成：")
+        print(f"  - 16个方向 × 12个月 = 192个潜在须须")
+        print(f"  - 实际生成须须数量: {total_tendrils}个")
+        print(f"  - 长度映射: 风向出现频率")
+        print(f"  - 角度映射: 绝对罗盘方向")
+        
+        return tendrils_data
 
     def visualize_layer01(self, layer0_data, stems_data):
         """Visualize Layer 0 + Layer 1: Dandelion Core and Stems"""
@@ -425,8 +514,118 @@ class MeteorologicalDandelion:
         
         return fig
 
+    def visualize_layer012(self, layer0_data, layer1_data, layer2_data):
+        """可视化Layer 0+1+2: 完整的气象蒲公英"""
+        print("\n🎨 绘制完整蒲公英: Layer 0+1+2...")
+        
+        # 创建画布
+        fig, ax = plt.subplots(figsize=(14, 14), subplot_kw=dict(projection='polar'))
+        ax.set_facecolor('#FAFAFA')
+        ax.set_theta_zero_location('N')
+        ax.set_theta_direction(-1)
+        
+        # 获取核心数据
+        centroid = layer0_data['centroid']
+        convergence_radius = 0.2  # 核心位置
+        convergence_angle_rad = np.radians(centroid['angle'])
+        
+        # Layer 1: 绘制12条月度主线
+        print("绘制Layer 1: 月度主线...")
+        for month, stem in layer1_data.items():
+            # 从核心到主线端点
+            stem_angle_rad = stem['angle_rad']
+            stem_end_radius = convergence_radius + stem['length']  # 主线终点位置
+            
+            # 绘制主线
+            ax.plot([convergence_angle_rad, stem_angle_rad],
+                   [convergence_radius, stem_end_radius],
+                   color=self.palette['stems'], 
+                   linewidth=stem['thickness'], 
+                   alpha=0.8, 
+                   solid_capstyle='round',
+                   zorder=5)
+            
+            # 主线端点标记
+            ax.scatter([stem_angle_rad], [stem_end_radius], 
+                      s=50, c=self.palette['stems'], 
+                      alpha=0.9, marker='o', 
+                      edgecolors='white', linewidth=1.5, zorder=8)
+        
+        # Layer 2: 绘制风向须须
+        print("绘制Layer 2: 风向须须...")
+        for month, month_tendrils in layer2_data.items():
+            # 获取对应主线数据
+            stem = layer1_data[month]
+            stem_angle_rad = stem['angle_rad']
+            stem_end_radius = convergence_radius + stem['length']  # 与Layer 1保持一致
+            
+            for direction_name, tendril in month_tendrils.items():
+                if tendril['frequency'] > 0:  # 只绘制有数据的须须
+                    
+                    # 须须从主线端点开始，指向绝对罗盘方向
+                    start_radius = stem_end_radius
+                    start_angle_rad = stem_angle_rad
+                    
+                    end_radius = start_radius + tendril['length']
+                    end_angle_rad = tendril['angle_rad']  # 绝对罗盘方向
+                    
+                    # 绘制须须
+                    alpha_value = 0.6 + 0.3 * tendril['frequency_ratio']  # 基于频率的透明度
+                    ax.plot([start_angle_rad, end_angle_rad],
+                           [start_radius, end_radius],
+                           color=self.palette['tendrils'], 
+                           linewidth=tendril['thickness'], 
+                           alpha=alpha_value,
+                           solid_capstyle='round',
+                           zorder=3)
+                    
+                    # 须须端点标记（仅显著须须）
+                    if tendril['frequency'] >= 3:
+                        marker_size = 10 + tendril['frequency'] * 1.5
+                        ax.scatter([end_angle_rad], [end_radius], 
+                                  s=marker_size, c=self.palette['tendrils'], 
+                                  alpha=0.7, marker='o', 
+                                  edgecolors='white', linewidth=0.5, zorder=6)
+        
+        # Layer 0: 绘制核心
+        print("绘制Layer 0: 核心...")
+        ax.scatter([convergence_angle_rad], [convergence_radius],
+                  s=200, c=self.palette['core'], 
+                  alpha=1.0, marker='o', 
+                  edgecolors='white', linewidth=3, zorder=10)
+        
+        # 设置图表样式
+        ax.set_ylim(0, 2.0)
+        ax.set_thetagrids(range(0, 360, 45), 
+                         ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'],
+                         fontsize=10, color=self.palette['stems'])
+        ax.set_rticks([])
+        ax.grid(True, alpha=0.2)
+        
+        # 标题和说明
+        fig.suptitle('气象蒲公英 - 完整版本\n香港国际机场 2024年风数据', 
+                    fontsize=18, fontweight='bold', color=self.palette['core'], y=0.95)
+        
+        plt.figtext(0.02, 0.02, 
+                   'Layer 0: 核心 (年度风力中心)\n'
+                   'Layer 1: 主线 (12个月, 长度∝平均风速, 角度=合力方向)\n'
+                   'Layer 2: 须须 (16个风向, 长度∝出现频率, 角度=绝对方位)\n\n'
+                   '设计原则: 数据驱动的有机形态',
+                   fontsize=9, color=self.palette['tendrils'], 
+                   verticalalignment='bottom', fontfamily='monospace')
+        
+        plt.tight_layout()
+        
+        # 保存图片
+        filename = 'Meteorological_Dandelion_Layers012_CORRECTED_HKA_2024.png'
+        plt.savefig(filename, dpi=300, bbox_inches='tight', 
+                   facecolor='white', edgecolor='none')
+        print(f"✅ Layer 0+1+2已保存: {filename}")
+        
+        return filename
+
 def main():
-    """Main Program - Layer 0 + Layer 1"""
+    """Main Program - Layer 0 + Layer 1 + Layer 2"""
     dandelion = MeteorologicalDandelion()
     
     # 1. Get wind data
@@ -435,17 +634,21 @@ def main():
     # 2. Calculate Layer 0 core
     layer0_data = dandelion.calculate_layer0_centroid(df)
     
-    # 3. Recalculate Layer 1 monthly stems
-    stems_data = dandelion.calculate_layer1_stems(layer0_data, df)
+    # 3. Calculate Layer 1 monthly stems
+    layer1_data = dandelion.calculate_layer1_stems(layer0_data, df)
     
-    # 4. Visualize Layer 0 + Layer 1
-    dandelion.visualize_layer01(layer0_data, stems_data)
+    # 4. Calculate Layer 2 direction tendrils
+    layer2_data = dandelion.calculate_layer2_tendrils(layer1_data, df)
     
-    print(f"\n🌼 Layer 0 + Layer 1 Complete!")
-    print("✨ Dandelion core and stem structure established")
+    # 5. Visualize complete Layer 0 + Layer 1 + Layer 2
+    dandelion.visualize_layer012(layer0_data, layer1_data, layer2_data)
+    
+    print(f"\n🌼 Layer 0 + Layer 1 + Layer 2 Complete!")
+    print("✨ Complete dandelion structure with tendrils established")
     print("🎯 Core position: {:.1f}°".format(layer0_data['centroid']['angle']))
     print("🌱 Stem count: 12 monthly branches")
-    print("🚀 Ready for Layer 2: Direction Tendrils?")
+    print("🌿 Tendril count: 192 direction tendrils (16 × 12)")
+    print("🚀 Ready for Layer 3: Seed Puffs?")
 
 if __name__ == "__main__":
     main()
