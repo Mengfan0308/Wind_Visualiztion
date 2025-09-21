@@ -190,16 +190,6 @@ class EnhancedWindFlowerVisualizer:
             circle = Circle((0, 0), month * 1.0, fill=False, 
                           color=circle_color, alpha=circle_alpha, linewidth=1)
             ax.add_patch(circle)
-            
-            # 装饰性内环
-            if month % 3 == 0:  # 季节分界线
-                circle_deco = Circle((0, 0), month * 1.0, fill=False, 
-                              color='#FFD700', alpha=0.4, linewidth=2)
-                ax.add_patch(circle_deco)
-        
-        # 添加中心装饰
-        center_circle = Circle((0, 0), 0.5, fill=True, color='#FFD700', alpha=0.3)
-        ax.add_patch(center_circle)
         
         # 添加月份标签（更加精美）
         month_names = ['1月', '2月', '3月', '4月', '5月', '6月', 
