@@ -372,7 +372,7 @@ class EnhancedWindFlowerVisualizer:
         
         # 艺术签名
         plt.figtext(0.98, 0.02, 
-                   'Designed with ❤️ by GitHub Copilot\nPROGRAMMING FOR ARTISTS AND DESIGNERS',
+                   'PROGRAMMING FOR ARTISTS AND DESIGNERS',
                    fontsize=10, color='#FFD700', style='italic',
                    horizontalalignment='right', verticalalignment='bottom')
         
