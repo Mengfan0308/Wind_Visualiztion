@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-香港国际机场2024年风向风速数据交互式可视化
-"风之花朵" - 动画 + 交互版本
+Hong Kong International Airport 2024 Wind Data Interactive Visualization
+"Wind Flower" - Animation + Interactive Version
 
-功能特色：
-- 逐月动画展示数据演变
-- 鼠标悬停显示详细信息
-- 季节色彩渐变系统
-- 可播放/暂停控制
+Features:
+- Monthly animation showing data evolution
+- Mouse hover for detailed information
+- Seasonal color gradient system
+- Play/Pause controls
 
-技术实现：Plotly + Dash
-日期：2025年9月21日
+Implementation: Plotly + Dash
+Date: September 21, 2025
 """
 
 import xml.etree.ElementTree as ET
@@ -26,7 +26,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 class InteractiveWindFlowerVisualizer:
-    """交互式风之花朵可视化器"""
+    """Interactive Wind Flower Visualizer"""
     
     def __init__(self):
         self.wind_direction_data = None
@@ -35,8 +35,8 @@ class InteractiveWindFlowerVisualizer:
         self.app = None
         
     def parse_xml_data(self, wind_dir_file, wind_speed_file):
-        """解析XML文件并提取数据"""
-        print("📂 正在解析XML数据文件...")
+        """Parse XML files and extract data"""
+        print("📂 Parsing XML data files...")
         
         # 解析风向数据
         tree_dir = ET.parse(wind_dir_file)
@@ -80,14 +80,14 @@ class InteractiveWindFlowerVisualizer:
         self.wind_direction_data = pd.DataFrame(dir_data, columns=['year', 'month', 'day', 'direction'])
         self.wind_speed_data = pd.DataFrame(speed_data, columns=['year', 'month', 'day', 'speed'])
         
-        print(f"✅ 风向数据记录数: {len(self.wind_direction_data)}")
-        print(f"✅ 风速数据记录数: {len(self.wind_speed_data)}")
+        print(f"✅ Wind direction records: {len(self.wind_direction_data)}")
+        print(f"✅ Wind speed records: {len(self.wind_speed_data)}")
         
         return self.wind_direction_data, self.wind_speed_data
     
     def preprocess_data(self):
-        """数据预处理和清洗"""
-        print("🔧 正在进行数据预处理...")
+        """Data preprocessing and cleaning"""
+        print("🔧 Processing data preprocessing...")
         
         # 合并风向和风速数据
         self.combined_data = pd.merge(
@@ -140,47 +140,47 @@ class InteractiveWindFlowerVisualizer:
         
         # 添加悬停信息
         self.combined_data['hover_text'] = self.combined_data.apply(
-            lambda row: f"日期: {row['date'].strftime('%Y-%m-%d')}<br>" +
-                       f"风向: {row['direction']:.1f}°<br>" +
-                       f"风速: {row['speed']:.1f} km/h<br>" +
-                       f"季节: {row['season']}<br>" +
-                       f"月份: {row['month']}月",
+            lambda row: f"Date: {row['date'].strftime('%Y-%m-%d')}<br>" +
+                       f"Wind Direction: {row['direction']:.1f}°<br>" +
+                       f"Wind Speed: {row['speed']:.1f} km/h<br>" +
+                       f"Season: {row['season']}<br>" +
+                       f"Month: {row['month']}",
             axis=1
         )
         
-        print(f"📊 数据预处理完成，总记录数: {len(self.combined_data)}")
+        print(f"📊 Data preprocessing completed, total records: {len(self.combined_data)}")
         return self.combined_data
     
     def create_interactive_app(self):
-        """创建交互式Dash应用"""
+        """Create interactive Dash application"""
         
         # 初始化Dash应用
         self.app = dash.Dash(__name__)
         
         # 应用布局
         self.app.layout = html.Div([
-            html.H1("🌸 香港国际机场2024年风之花朵 🌸", 
+            html.H1("🌸 Hong Kong International Airport 2024 Wind Flower 🌸", 
                    style={'textAlign': 'center', 'color': 'white', 'backgroundColor': 'black'}),
             
             html.Div([
-                html.Label("选择显示月份:", style={'color': 'white'}),
+                html.Label("Select Display Month:", style={'color': 'white'}),
                 dcc.Slider(
                     id='month-slider',
                     min=1,
                     max=12,
                     step=1,
                     value=12,
-                    marks={i: f'{i}月' for i in range(1, 13)},
+                    marks={i: f'Month {i}' for i in range(1, 13)},
                     tooltip={"placement": "bottom", "always_visible": True}
                 ),
             ], style={'margin': '20px', 'backgroundColor': 'black', 'padding': '20px'}),
             
             html.Div([
-                html.Button('播放动画', id='play-button', n_clicks=0,
+                html.Button('Play Animation', id='play-button', n_clicks=0,
                            style={'margin': '10px', 'padding': '10px'}),
-                html.Button('暂停', id='pause-button', n_clicks=0,
+                html.Button('Pause', id='pause-button', n_clicks=0,
                            style={'margin': '10px', 'padding': '10px'}),
-                html.Button('重置', id='reset-button', n_clicks=0,
+                html.Button('Reset', id='reset-button', n_clicks=0,
                            style={'margin': '10px', 'padding': '10px'}),
             ], style={'textAlign': 'center', 'backgroundColor': 'black', 'padding': '10px'}),
             
@@ -191,9 +191,9 @@ class InteractiveWindFlowerVisualizer:
                 html.Div([
                     # 标题部分
                     html.Div([
-                        html.Span("数据统计", style={'color': '#FFD700', 'fontSize': '16px', 'fontWeight': 'bold'}),
+                        html.Span("Data Statistics", style={'color': '#FFD700', 'fontSize': '16px', 'fontWeight': 'bold'}),
                         html.Span(" & ", style={'color': 'white', 'fontSize': '14px', 'margin': '0 5px'}),
-                        html.Span("可视化说明", style={'color': '#FFD700', 'fontSize': '16px', 'fontWeight': 'bold'})
+                        html.Span("Visualization Guide", style={'color': '#FFD700', 'fontSize': '16px', 'fontWeight': 'bold'})
                     ], style={'marginBottom': '12px'}),
                     
                     # 数据统计 - 两列布局
@@ -201,11 +201,11 @@ class InteractiveWindFlowerVisualizer:
                         # 左列
                         html.Div([
                             html.Div([
-                                html.Span("☐ 总记录数: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
+                                html.Span("☐ Total Records: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
                                 html.Span("366", style={'color': 'white', 'fontSize': '11px'})
                             ], style={'marginBottom': '3px'}),
                             html.Div([
-                                html.Span("☐ 风速范围: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
+                                html.Span("☐ Wind Speed Range: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
                                 html.Span("7.9-32.0 km/h", style={'color': 'white', 'fontSize': '11px'})
                             ], style={'marginBottom': '3px'}),
                         ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top'}),
@@ -213,11 +213,11 @@ class InteractiveWindFlowerVisualizer:
                         # 右列  
                         html.Div([
                             html.Div([
-                                html.Span("☐ 风向范围: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
+                                html.Span("☐ Wind Direction Range: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
                                 html.Span("10° -360°", style={'color': 'white', 'fontSize': '11px'})
                             ], style={'marginBottom': '3px'}),
                             html.Div([
-                                html.Span("☐ 平均风速: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
+                                html.Span("☐ Average Wind Speed: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
                                 html.Span("15.5 km/h", style={'color': 'white', 'fontSize': '11px'})
                             ], style={'marginBottom': '3px'}),
                         ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top', 'marginLeft': '10%'}),
@@ -225,14 +225,14 @@ class InteractiveWindFlowerVisualizer:
                     
                     # 可视化原理说明
                     html.Div([
-                        html.Span("可视化原理: 同心圆=月份 (1月=内圈→12月=外圈) | 角度=风向 | 距离=风速", 
+                        html.Span("Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer) | Angle=Wind Direction | Distance=Wind Speed", 
                                 style={'color': '#B3E6FF', 'fontSize': '10px'})
                     ], style={'marginBottom': '8px'}),
                     
                     # 季节色彩渐变系统标题
                     html.Div([
-                        html.Span("季节色彩渐变系统", style={'color': '#B3E6FF', 'fontSize': '12px', 'fontWeight': 'bold'}),
-                        html.Span(", 颜色表示月份/季节", style={'color': '#B3E6FF', 'fontSize': '10px'})
+                        html.Span("Seasonal Color Gradient System", style={'color': '#B3E6FF', 'fontSize': '12px', 'fontWeight': 'bold'}),
+                        html.Span(", Colors Represent Months/Seasons", style={'color': '#B3E6FF', 'fontSize': '10px'})
                     ], style={'marginBottom': '6px'}),
                     
                     # 四季颜色图例 - 原版布局
@@ -243,12 +243,12 @@ class InteractiveWindFlowerVisualizer:
                             html.Div([
                                 html.Div([
                                     html.Span("■", style={'color': '#FFB3E6', 'fontSize': '14px', 'marginRight': '5px'}),
-                                    html.Span("春季 Spring", style={'color': 'white', 'fontSize': '11px'})
+                                    html.Span("Spring", style={'color': 'white', 'fontSize': '11px'})
                                 ], style={'marginBottom': '3px'}),
                                 html.Div([
-                                    html.Span("● 3月", style={'color': '#FF4DD8', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● 4月", style={'color': '#FF80DF', 'fontSize': '10px', 'marginRight': '10px'}),  
-                                    html.Span("● 5月", style={'color': '#FFB3E6', 'fontSize': '10px'}),
+                                    html.Span("● Mar", style={'color': '#FF4DD8', 'fontSize': '10px', 'marginRight': '10px'}),
+                                    html.Span("● Apr", style={'color': '#FF80DF', 'fontSize': '10px', 'marginRight': '10px'}),  
+                                    html.Span("● May", style={'color': '#FFB3E6', 'fontSize': '10px'}),
                                 ]),
                             ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top'}),
                             
@@ -256,12 +256,12 @@ class InteractiveWindFlowerVisualizer:
                             html.Div([
                                 html.Div([
                                     html.Span("■", style={'color': '#4DFF4D', 'fontSize': '14px', 'marginRight': '5px'}),
-                                    html.Span("夏季 Summer", style={'color': 'white', 'fontSize': '11px'})
+                                    html.Span("Summer", style={'color': 'white', 'fontSize': '11px'})
                                 ], style={'marginBottom': '3px'}),
                                 html.Div([
-                                    html.Span("● 6月", style={'color': '#1AFF1A', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● 7月", style={'color': '#4DFF4D', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● 8月", style={'color': '#80FF80', 'fontSize': '10px'}),
+                                    html.Span("● Jun", style={'color': '#1AFF1A', 'fontSize': '10px', 'marginRight': '10px'}),
+                                    html.Span("● Jul", style={'color': '#4DFF4D', 'fontSize': '10px', 'marginRight': '10px'}),
+                                    html.Span("● Aug", style={'color': '#80FF80', 'fontSize': '10px'}),
                                 ]),
                             ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top', 'marginLeft': '10%'}),
                         ], style={'marginBottom': '8px'}),
@@ -272,12 +272,12 @@ class InteractiveWindFlowerVisualizer:
                             html.Div([
                                 html.Div([
                                     html.Span("■", style={'color': '#FFA54D', 'fontSize': '14px', 'marginRight': '5px'}),
-                                    html.Span("秋季 Autumn", style={'color': 'white', 'fontSize': '11px'})
+                                    html.Span("Autumn", style={'color': 'white', 'fontSize': '11px'})
                                 ], style={'marginBottom': '3px'}),
                                 html.Div([
-                                    html.Span("● 9月", style={'color': '#FF8F1A', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● 10月", style={'color': '#FFA54D', 'fontSize': '10px', 'marginRight': '8px'}),
-                                    html.Span("● 11月", style={'color': '#FFBB80', 'fontSize': '10px'}),
+                                    html.Span("● Sep", style={'color': '#FF8F1A', 'fontSize': '10px', 'marginRight': '10px'}),
+                                    html.Span("● Oct", style={'color': '#FFA54D', 'fontSize': '10px', 'marginRight': '8px'}),
+                                    html.Span("● Nov", style={'color': '#FFBB80', 'fontSize': '10px'}),
                                 ]),
                             ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top'}),
                             
@@ -285,12 +285,12 @@ class InteractiveWindFlowerVisualizer:
                             html.Div([
                                 html.Div([
                                     html.Span("■", style={'color': '#4DCCFF', 'fontSize': '14px', 'marginRight': '5px'}),
-                                    html.Span("冬季 Winter", style={'color': 'white', 'fontSize': '11px'})
+                                    html.Span("Winter", style={'color': 'white', 'fontSize': '11px'})
                                 ], style={'marginBottom': '3px'}),
                                 html.Div([
-                                    html.Span("● 12月", style={'color': '#1ABFFF', 'fontSize': '10px', 'marginRight': '8px'}),
-                                    html.Span("● 1月", style={'color': '#4DCCFF', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● 2月", style={'color': '#80D9FF', 'fontSize': '10px'}),
+                                    html.Span("● Dec", style={'color': '#1ABFFF', 'fontSize': '10px', 'marginRight': '8px'}),
+                                    html.Span("● Jan", style={'color': '#4DCCFF', 'fontSize': '10px', 'marginRight': '10px'}),
+                                    html.Span("● Feb", style={'color': '#80D9FF', 'fontSize': '10px'}),
                                 ]),
                             ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top', 'marginLeft': '10%'}),
                         ]),
@@ -395,7 +395,7 @@ class InteractiveWindFlowerVisualizer:
                 ),
                 text=filtered_data['hover_text'],
                 hovertemplate='%{text}<extra></extra>',
-                name='风向风速数据'
+                name='Wind Direction & Speed Data'
             ))
             
             # 添加同心圆环（月份参考）
@@ -430,8 +430,8 @@ class InteractiveWindFlowerVisualizer:
             
             # 设置布局
             fig.update_layout(
-                title=f"🌸 风之花朵 - 显示至{current_month}月 🌸<br>" +
-                      f"<span style='font-size:14px'>数据点: {total_records} | 平均风速: {avg_speed:.1f}km/h | 最大风速: {max_speed:.1f}km/h | 主导风向: {dominant_direction:.0f}°</span>",
+                title=f"🌸 Wind Flower - Display up to Month {current_month} 🌸<br>" +
+                      f"<span style='font-size:14px'>Data Points: {total_records} | Avg Speed: {avg_speed:.1f}km/h | Max Speed: {max_speed:.1f}km/h | Dominant Direction: {dominant_direction:.0f}°</span>",
                 title_font_size=20,
                 title_font_color='white',
                 paper_bgcolor='black',
@@ -467,35 +467,35 @@ class InteractiveWindFlowerVisualizer:
         
         return self.app
 
-# 主函数
+# Main function
 def main():
-    """主函数"""
-    print("🌸 启动交互式风之花朵可视化...")
+    """Main function"""
+    print("🌸 Starting interactive Wind Flower visualization...")
     
-    # 创建可视化器
+    # Create visualizer
     visualizer = InteractiveWindFlowerVisualizer()
     
-    # 解析数据
+    # Parse data
     visualizer.parse_xml_data(
         'daily_HKA_PDIR_ALL - 副本.xml',
         'daily_HKA_WSPD_ALL - 副本.xml'
     )
     
-    # 预处理数据
+    # Preprocess data
     visualizer.preprocess_data()
     
-    # 创建交互式应用
+    # Create interactive application
     app = visualizer.create_interactive_app()
     
-    print("\n🚀 启动Web服务器...")
-    print("📱 请在浏览器中打开: http://127.0.0.1:8050")
-    print("🎮 功能说明:")
-    print("   • 拖动滑块选择显示月份")
-    print("   • 点击'播放动画'看逐月演变")
-    print("   • 鼠标悬停数据点查看详情")
-    print("   • 点的大小表示风速，颜色表示季节")
+    print("\n🚀 Starting Web server...")
+    print("📱 Please open in browser: http://127.0.0.1:8050")
+    print("🎮 Features:")
+    print("   • Drag slider to select display month")
+    print("   • Click 'Play Animation' to see monthly evolution")
+    print("   • Hover over data points for details")
+    print("   • Point size represents wind speed, color represents season")
     
-    # 运行应用
+    # Run application
     app.run(debug=True, host='127.0.0.1', port=8050)
 
 if __name__ == "__main__":

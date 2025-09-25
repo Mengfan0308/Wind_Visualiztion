@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Hong Kong International Airport 2024 Wind Data Visualization - Enhanced Version (Simplified)
+Hong Kong International Airport 2024 Wind Data Visualization - Simple Version
 "Wind Flower" - Beautiful Polar Annual Ring Chart
 
 Features:
@@ -49,15 +49,15 @@ import os
 if sys.platform.startswith('win'):
     try:
         matplotlib.use('TkAgg')
-        print("Using TkAgg backend for Windows")
+        print("🖥️ Using TkAgg backend for Windows")
     except ImportError:
         try:
             matplotlib.use('Qt5Agg')
-            print("Using Qt5Agg backend")
+            print("🖥️ Using Qt5Agg backend")
         except ImportError:
-            print("Using default backend")
+            print("⚠️ Using default backend")
 
-class EnhancedWindFlowerVisualizer:
+class SimpleWindFlowerVisualizer:
     def __init__(self):
         """Initialize the visualizer"""
         self.wind_direction_data = None
@@ -66,7 +66,7 @@ class EnhancedWindFlowerVisualizer:
     
     def parse_xml_data(self, wind_dir_file, wind_speed_file):
         """Parse XML files and extract data"""
-        print("Parsing XML data files...")
+        print("📂 Parsing XML data files...")
         
         # Parse wind direction data
         tree_dir = ET.parse(wind_dir_file)
@@ -110,14 +110,14 @@ class EnhancedWindFlowerVisualizer:
         self.wind_direction_data = pd.DataFrame(dir_data, columns=['year', 'month', 'day', 'direction'])
         self.wind_speed_data = pd.DataFrame(speed_data, columns=['year', 'month', 'day', 'speed'])
         
-        print(f"Wind direction records: {len(self.wind_direction_data)}")
-        print(f"Wind speed records: {len(self.wind_speed_data)}")
+        print(f"✅ Wind direction records: {len(self.wind_direction_data)}")
+        print(f"✅ Wind speed records: {len(self.wind_speed_data)}")
         
         return self.wind_direction_data, self.wind_speed_data
     
     def preprocess_data(self):
         """Data preprocessing and cleaning"""
-        print("Processing data preprocessing...")
+        print("🔧 Processing data preprocessing...")
         
         # Merge wind direction and speed data
         self.combined_data = pd.merge(
@@ -145,7 +145,7 @@ class EnhancedWindFlowerVisualizer:
         
         self.combined_data['season'] = self.combined_data['month'].apply(get_season)
         
-        print(f"Data Overview:")
+        print(f"📊 Data Overview:")
         print(f"   Wind Direction Range: {self.combined_data['direction'].min():.1f}° - {self.combined_data['direction'].max():.1f}°")
         print(f"   Wind Speed Range: {self.combined_data['speed'].min():.1f} - {self.combined_data['speed'].max():.1f} km/h")
         print(f"   Time Range: {self.combined_data['date'].min().strftime('%Y-%m-%d')} - {self.combined_data['date'].max().strftime('%Y-%m-%d')}")
@@ -153,9 +153,9 @@ class EnhancedWindFlowerVisualizer:
         
         return self.combined_data
     
-    def create_enhanced_wind_flower(self):
+    def create_simple_wind_flower(self):
         """Create beautiful wind flower visualization with simple single rendering"""
-        print("Creating beautiful wind flower visualization...")
+        print("🌸 Creating beautiful wind flower visualization...")
         
         # Create figure with optimized settings
         fig = plt.figure(figsize=(16, 16), facecolor='#0a0a0a', dpi=100)
@@ -247,7 +247,7 @@ class EnhancedWindFlowerVisualizer:
         ax.set_facecolor('#0a0a0a')
         
         # Beautiful title
-        title_text = 'Hong Kong International Airport 2024 Wind Rose Flower \n' + \
+        title_text = '🌸 Hong Kong International Airport 2024 Wind Rose Flower \n' + \
                     'Every petal tells a story of the sky'
 
         plt.suptitle(title_text, fontsize=20, color='white', 
@@ -268,7 +268,7 @@ class EnhancedWindFlowerVisualizer:
         plt.savefig(output_filename, dpi=300, bbox_inches='tight', 
                    facecolor='#0a0a0a', edgecolor='none', 
                    pad_inches=0.5, transparent=False)
-        print(f"Perfect PNG saved as: {output_filename}")
+        print(f"💾 Perfect PNG saved as: {output_filename}")
 
         return fig, ax
     
@@ -353,32 +353,14 @@ class EnhancedWindFlowerVisualizer:
                     plt.figtext(month_x_start + i*0.025, y_pos-0.01, f'M{month}',
                                fontsize=7, color='white', ha='center')
         
-        # Wind speed intensity legend (right top corner)
-        speed_legend_elements = []
-        speeds = [10, 15, 20, 25, 30]
-        for speed in speeds:
-            point_size = 20 + speed * 8
-            speed_legend_elements.append(
-                plt.scatter([], [], s=point_size, c='white', alpha=0.8, 
-                          edgecolors='gray', label=f'{speed} km/h'))
-        
-        legend2 = ax.legend(handles=speed_legend_elements, 
-                           title='风速强度 Wind Speed', 
-                           loc='upper right', bbox_to_anchor=(1.1, 1.0),
-                           title_fontsize=14, fontsize=12,
-                           facecolor='black', edgecolor='white', framealpha=0.9)
-        legend2.get_title().set_color('white')
-        for text in legend2.get_texts():
-            text.set_color('white')
-        
         # Bottom note
         plt.figtext(0.02, 0.02, 'Note: Dot size reflects wind speed intensity, color indicates month/season',
                    fontsize=8, color='#CCCCCC', style='italic')
 
 # Main program
 if __name__ == "__main__":
-    # Initialize enhanced visualizer
-    visualizer = EnhancedWindFlowerVisualizer()
+    # Initialize simple visualizer
+    visualizer = SimpleWindFlowerVisualizer()
     
     # Data file paths
     wind_dir_file = "daily_HKA_PDIR_ALL - 副本.xml"
@@ -388,28 +370,28 @@ if __name__ == "__main__":
         # Parse and process data
         dir_data, speed_data = visualizer.parse_xml_data(wind_dir_file, wind_speed_file)
         combined_data = visualizer.preprocess_data()
-        print("\nData parsing and preprocessing completed!")
+        print("\n🎉 Data parsing and preprocessing completed!")
         
         # Create beautiful wind flower visualization
-        fig, ax = visualizer.create_enhanced_wind_flower()
+        fig, ax = visualizer.create_simple_wind_flower()
         
         # Show the visualization
-        print("\nOpening visualization window...")
+        print("\n🖥️ Opening visualization window...")
         plt.tight_layout()
         plt.show()
         
-        print("\nBeautiful wind flower visualization created!")
+        print("\n🌟 Beautiful wind flower visualization created!")
         print("This artistic data visualization displays Hong Kong International Airport's 2024 wind direction and speed patterns,")
-        print("transforming scientific data into a beautiful flower pattern!")
+        print("transforming scientific data into a beautiful flower pattern! 🌸✨")
         
-        print("\nProgram completed successfully!")
+        print("\n✅ Program completed successfully!")
         
     except FileNotFoundError as e:
         print(f"❌ File not found: {e}")
         print("Please ensure XML files are in the current directory")
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\nProgram interrupted by user")
+        print("\n⚠️ Program interrupted by user")
         sys.exit(0)
     except Exception as e:
         print(f"❌ Error processing data: {e}")
