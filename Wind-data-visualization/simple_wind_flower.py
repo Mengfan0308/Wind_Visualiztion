@@ -31,8 +31,8 @@ warnings.filterwarnings('ignore')
 print(f"System encoding: {sys.stdout.encoding}")
 print(f"Local encoding: {locale.getpreferredencoding()}")
 
-# Configure matplotlib for optimal display and rendering
-plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
+# Configure matplotlib for optimal display and rendering - optimized for performance
+plt.rcParams['font.sans-serif'] = ['Corbel', 'SimHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['figure.dpi'] = 100
 plt.rcParams['savefig.dpi'] = 300
@@ -40,6 +40,11 @@ plt.rcParams['axes.titlesize'] = 'large'
 plt.rcParams['axes.labelsize'] = 'medium'
 plt.rcParams['xtick.labelsize'] = 'small'
 plt.rcParams['ytick.labelsize'] = 'small'
+
+# Performance optimization settings
+plt.rcParams['agg.path.chunksize'] = 10000  # Reduce path rendering overhead
+plt.rcParams['path.simplify'] = True        # Simplify paths for faster rendering
+plt.rcParams['figure.max_open_warning'] = 0 # Disable figure limit warnings
 
 # Set display backend for better window management
 import matplotlib
@@ -59,10 +64,16 @@ if sys.platform.startswith('win'):
 
 class SimpleWindFlowerVisualizer:
     def __init__(self):
-        """Initialize the visualizer"""
+        """Initialize the visualizer with font caching for performance"""
         self.wind_direction_data = None
         self.wind_speed_data = None
         self.combined_data = None
+        
+        # Cache font properties for better performance
+        self.bowlby_props = {'family': 'Bowlby One', 'weight': 'bold'}
+        self.corbel_props = {'family': 'Corbel'}
+        self.corbel_bold_props = {'family': 'Corbel', 'weight': 'bold'}
+        self.corbel_italic_props = {'family': 'Corbel', 'style': 'italic'}
     
     def parse_xml_data(self, wind_dir_file, wind_speed_file):
         """Parse XML files and extract data"""
@@ -157,9 +168,12 @@ class SimpleWindFlowerVisualizer:
         """Create beautiful wind flower visualization with simple single rendering"""
         print("🌸 Creating beautiful wind flower visualization...")
         
-        # Create figure with optimized settings
+        # Create figure with optimized settings and better layout
         fig = plt.figure(figsize=(16, 16), facecolor='#0a0a0a', dpi=100)
         ax = plt.subplot(111, projection='polar', facecolor='#0a0a0a')
+        
+        # Set balanced margins for optimal design layout
+        fig.subplots_adjust(left=0.1, right=0.9, top=0.88, bottom=0.12)
 
         # Define beautiful seasonal colors
         season_palettes = {
@@ -214,7 +228,7 @@ class SimpleWindFlowerVisualizer:
             
             # Main rings
             circle = Circle((0, 0), month * 1.0, fill=False, 
-                          color=circle_color, alpha=circle_alpha, linewidth=1)
+                          color=circle_color, alpha=circle_alpha, linewidth=1.5)
             ax.add_patch(circle)
 
         # Add month labels
@@ -225,18 +239,18 @@ class SimpleWindFlowerVisualizer:
             radius_pos = month * 1.0 + 0.3
             ax.text(np.pi, radius_pos, month_names[month-1], 
                    ha='center', va='center', color='white', 
-                   fontsize=12, fontweight='bold',
+                   fontsize=12, fontproperties=self.corbel_bold_props,
                    bbox=dict(boxstyle="round,pad=0.3", facecolor='black', alpha=0.7))
 
         # Set polar coordinate style
         ax.set_theta_zero_location('N')
         ax.set_theta_direction(-1)
         
-        # Set angle labels
+        # Set angle labels - optimized
         ax.set_thetagrids(np.arange(0, 360, 45), 
                          ['N', 'NE', 'E', 'SE', 
                           'S', 'SW', 'W', 'NW'],
-                         fontsize=14, color='white', fontweight='bold')
+                         fontsize=14, color='white', fontproperties=self.corbel_bold_props)
         
         # Set radius range and labels
         ax.set_ylim(0, 14)
@@ -246,21 +260,21 @@ class SimpleWindFlowerVisualizer:
         ax.grid(True, alpha=0.3, color='white', linestyle='--')
         ax.set_facecolor('#0a0a0a')
         
-        # Beautiful title
-        title_text = '🌸 Hong Kong International Airport 2024 Wind Rose Flower \n' + \
+        # Beautiful title - positioned higher with larger font
+        title_text = 'Hong Kong International Airport 2024 Wind Rose Flower \n' + \
                     'Every petal tells a story of the sky'
 
         plt.suptitle(title_text, fontsize=20, color='white', 
-                    y=0.95, fontweight='bold', 
+                    y=0.95, fontproperties=self.bowlby_props,
                     bbox=dict(boxstyle="round,pad=0.5", facecolor='black', alpha=0.8))
 
         # Add simple annotations and legends
         self._add_simple_annotations(fig, ax)
         
-        # Artistic signature
+        # Artistic signature - optimized
         plt.figtext(0.98, 0.02, 
                    'PROGRAMMING FOR ARTISTS AND DESIGNERS',
-                   fontsize=10, color='#FFD700', style='italic',
+                   fontsize=10, color='#FFD700', fontproperties=self.corbel_italic_props,
                    horizontalalignment='right', verticalalignment='bottom')
 
         # Save high-quality PNG
@@ -291,37 +305,43 @@ class SimpleWindFlowerVisualizer:
             12: season_palettes['Winter'][3], 1: season_palettes['Winter'][0], 2: season_palettes['Winter'][1]
         }
         
-        # Create annotation background
-        annotation_bg = Rectangle((0.01, 0.01), 0.33, 0.16, 
+        # Create annotation background (optimized for larger window)
+        annotation_bg = Rectangle((0.01, 0.01), 0.35, 0.20, 
                                 transform=fig.transFigure, 
                                 facecolor='black', alpha=0.85, 
                                 edgecolor='white', linewidth=1)
         fig.patches.append(annotation_bg)
         
-        # Main title
-        plt.figtext(0.02, 0.15, 'Data Statistics & Visualization Guide', 
-                   fontsize=14, fontweight='bold', color='#FFD700')
+        # Main title (with more top margin) - optimized
+        plt.figtext(0.025, 0.185, 'Data Statistics & Visualization Guide', 
+                   fontsize=14, color='#FFD700', fontproperties=self.bowlby_props)
         
-        # Data statistics
+        # Data statistics (increased line spacing)
         stats_line1 = f"• Total Records: {len(self.combined_data)}  • Direction Range: {self.combined_data['direction'].min():.0f}°-{self.combined_data['direction'].max():.0f}°"
         stats_line2 = f"• Speed Range: {self.combined_data['speed'].min():.1f}-{self.combined_data['speed'].max():.1f} km/h  • Average Speed: {self.combined_data['speed'].mean():.1f} km/h"
         
-        plt.figtext(0.02, 0.13, stats_line1, fontsize=9, color='white')
-        plt.figtext(0.02, 0.12, stats_line2, fontsize=9, color='white')
+        plt.figtext(0.025, 0.155, stats_line1, fontsize=9, color='white', fontproperties=self.corbel_props)
+        plt.figtext(0.025, 0.135, stats_line2, fontsize=9, color='white', fontproperties=self.corbel_props)
         
-        # Visualization explanation
-        plt.figtext(0.02, 0.10, 'Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer) | Angle=Direction | Distance=Speed', 
-                   fontsize=9, color='white')
+        # Visualization explanation (split into two lines to fit within frame) - optimized
+        plt.figtext(0.025, 0.115, 'Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer)', 
+                   fontsize=9, color='white', fontproperties=self.corbel_props)
+        plt.figtext(0.025, 0.100, 'Angle=Direction | Distance=Speed', 
+                   fontsize=9, color='white', fontproperties=self.corbel_props)
         
-        # Seasonal color system title
-        plt.figtext(0.02, 0.08, 'Seasonal Color Gradient System', 
-                   fontsize=11, fontweight='bold', color='white')
+        # Seasonal color system title - using regular text font
+        plt.figtext(0.025, 0.082, 'Seasonal Color Gradient System', 
+                   fontsize=11, color='white', fontproperties=self.corbel_bold_props)
         
         # Draw seasonal colors
         seasons_layout = [
-            [('Spring', [3, 4, 5], 0.02, 0.06), ('Summer', [6, 7, 8], 0.18, 0.06)],
-            [('Autumn', [9, 10, 11], 0.02, 0.04), ('Winter', [12, 1, 2], 0.18, 0.04)]
+            [('Spring', [3, 4, 5], 0.025, 0.065), ('Summer', [6, 7, 8], 0.19, 0.065)],
+            [('Autumn', [9, 10, 11], 0.025, 0.040), ('Winter', [12, 1, 2], 0.19, 0.040)]
         ]
+        
+        # Month names for better readability
+        month_names_map = {1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun',
+                          7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'}
         
         for row in seasons_layout:
             for season_name, months, x_pos, y_pos in row:
@@ -335,27 +355,48 @@ class SimpleWindFlowerVisualizer:
                                           facecolor=main_color, alpha=0.8)
                     fig.patches.append(season_rect)
                 
-                # Season title
-                plt.figtext(x_pos + 0.016, y_pos, season_name, 
-                           fontsize=9, fontweight='bold', color='white')
+                # Season title (closer to the color square) - optimized
+                plt.figtext(x_pos + 0.014, y_pos, season_name, 
+                           fontsize=9, color='white', fontproperties=self.corbel_bold_props)
                 
-                # Month dots
-                month_x_start = x_pos + 0.08
+                # Month dots (closer spacing)
+                month_x_start = x_pos + 0.07
                 for i, month in enumerate(months):
                     month_color = month_colors[month]
-                    month_circle = plt.Circle((month_x_start + i*0.025, y_pos+0.005), 0.004,
+                    month_circle = plt.Circle((month_x_start + i*0.022, y_pos+0.005), 0.004,
                                             transform=fig.transFigure,
                                             facecolor=month_color, alpha=0.8,
                                             edgecolor='white', linewidth=0.5)
                     fig.patches.append(month_circle)
                     
-                    # Month labels
-                    plt.figtext(month_x_start + i*0.025, y_pos-0.01, f'M{month}',
-                               fontsize=7, color='white', ha='center')
+                    # Month labels (closer to circles, using Jan/Feb/Mar format) - optimized
+                    plt.figtext(month_x_start + i*0.022, y_pos-0.007, month_names_map[month],
+                               fontsize=7, color='white', ha='center', fontproperties=self.corbel_props)
         
-        # Bottom note
-        plt.figtext(0.02, 0.02, 'Note: Dot size reflects wind speed intensity, color indicates month/season',
-                   fontsize=8, color='#CCCCCC', style='italic')
+        # Wind speed intensity legend (right top corner with improved spacing)
+        speed_legend_elements = []
+        speeds = [10, 15, 20, 25, 30]
+        for speed in speeds:
+            point_size = 20 + speed * 8
+            speed_legend_elements.append(
+                plt.scatter([], [], s=point_size, c='white', alpha=0.8, 
+                          edgecolors='gray', label=f'{speed} km/h'))
+        
+        legend2 = ax.legend(handles=speed_legend_elements, 
+                           title='Wind Speed', 
+                           loc='upper right', bbox_to_anchor=(1.15, 1.0),
+                           title_fontsize=11, fontsize=9,
+                           facecolor='black', edgecolor='white', framealpha=0.9,
+                           columnspacing=2.0, handletextpad=1.2, borderpad=1,
+                           labelspacing=1.0)
+        legend2.get_title().set_color('white')
+        legend2.get_title().set_horizontalalignment('center')
+        for text in legend2.get_texts():
+            text.set_color('white')
+        
+        # Bottom note (with more bottom margin) - optimized
+        plt.figtext(0.025, 0.025, 'Note: Dot size reflects wind speed intensity, color indicates month/season',
+                   fontsize=8, color='#CCCCCC', fontproperties=self.corbel_italic_props)
 
 # Main program
 if __name__ == "__main__":
@@ -375,9 +416,31 @@ if __name__ == "__main__":
         # Create beautiful wind flower visualization
         fig, ax = visualizer.create_simple_wind_flower()
         
-        # Show the visualization
+        # Show the visualization with controlled window size and full content
         print("\n🖥️ Opening visualization window...")
-        plt.tight_layout()
+        
+        # Set fixed, well-balanced layout parameters for optimal design
+        plt.subplots_adjust(left=0.12, right=0.88, top=0.88, bottom=0.12)
+        
+        # Get the current figure manager and set window properties
+        mngr = fig.canvas.manager
+        if hasattr(mngr, 'window'):
+            if hasattr(mngr.window, 'wm_geometry'):
+                # For TkAgg backend - set window size, position and title
+                mngr.window.wm_geometry('1500x1500+100+100')
+                mngr.window.wm_title('Hong Kong Airport 2024 Wind Rose Flower - Interactive View')
+            elif hasattr(mngr.window, 'setGeometry'):
+                # For Qt backend - set window geometry and title
+                mngr.window.setGeometry(100, 100, 1500, 1500)
+                mngr.window.setWindowTitle('Hong Kong Airport 2024 Wind Rose Flower - Interactive View')
+        
+        # Enable all toolbar functions for interaction (zoom, pan, home, etc.)
+        if hasattr(mngr, 'toolbar'):
+            mngr.toolbar.update()
+        
+        # Set window to be resizable
+        fig.canvas.mpl_connect('resize_event', lambda event: fig.tight_layout())
+        
         plt.show()
         
         print("\n🌟 Beautiful wind flower visualization created!")

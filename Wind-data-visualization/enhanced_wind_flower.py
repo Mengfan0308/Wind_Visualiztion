@@ -291,36 +291,36 @@ class EnhancedWindFlowerVisualizer:
             12: season_palettes['Winter'][3], 1: season_palettes['Winter'][0], 2: season_palettes['Winter'][1]
         }
         
-        # Create annotation background
-        annotation_bg = Rectangle((0.01, 0.01), 0.33, 0.16, 
+        # Create annotation background (increased height and adjusted position)
+        annotation_bg = Rectangle((0.01, 0.01), 0.35, 0.20, 
                                 transform=fig.transFigure, 
                                 facecolor='black', alpha=0.85, 
                                 edgecolor='white', linewidth=1)
         fig.patches.append(annotation_bg)
         
-        # Main title
-        plt.figtext(0.02, 0.15, 'Data Statistics & Visualization Guide', 
+        # Main title (with more top margin)
+        plt.figtext(0.025, 0.185, 'Data Statistics & Visualization Guide', 
                    fontsize=14, fontweight='bold', color='#FFD700')
         
-        # Data statistics
+        # Data statistics (increased line spacing)
         stats_line1 = f"• Total Records: {len(self.combined_data)}  • Direction Range: {self.combined_data['direction'].min():.0f}°-{self.combined_data['direction'].max():.0f}°"
         stats_line2 = f"• Speed Range: {self.combined_data['speed'].min():.1f}-{self.combined_data['speed'].max():.1f} km/h  • Average Speed: {self.combined_data['speed'].mean():.1f} km/h"
         
-        plt.figtext(0.02, 0.13, stats_line1, fontsize=9, color='white')
-        plt.figtext(0.02, 0.12, stats_line2, fontsize=9, color='white')
+        plt.figtext(0.025, 0.155, stats_line1, fontsize=9, color='white')
+        plt.figtext(0.025, 0.135, stats_line2, fontsize=9, color='white')
         
-        # Visualization explanation
-        plt.figtext(0.02, 0.10, 'Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer) | Angle=Direction | Distance=Speed', 
+        # Visualization explanation (increased spacing)
+        plt.figtext(0.025, 0.110, 'Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer) | Angle=Direction | Distance=Speed', 
                    fontsize=9, color='white')
         
-        # Seasonal color system title
-        plt.figtext(0.02, 0.08, 'Seasonal Color Gradient System', 
+        # Seasonal color system title (increased spacing)
+        plt.figtext(0.025, 0.085, 'Seasonal Color Gradient System', 
                    fontsize=11, fontweight='bold', color='white')
         
-        # Draw seasonal colors
+        # Draw seasonal colors (adjusted positions with more spacing)
         seasons_layout = [
-            [('Spring', [3, 4, 5], 0.02, 0.06), ('Summer', [6, 7, 8], 0.18, 0.06)],
-            [('Autumn', [9, 10, 11], 0.02, 0.04), ('Winter', [12, 1, 2], 0.18, 0.04)]
+            [('Spring', [3, 4, 5], 0.025, 0.065), ('Summer', [6, 7, 8], 0.19, 0.065)],
+            [('Autumn', [9, 10, 11], 0.025, 0.040), ('Winter', [12, 1, 2], 0.19, 0.040)]
         ]
         
         for row in seasons_layout:
@@ -363,7 +363,7 @@ class EnhancedWindFlowerVisualizer:
                           edgecolors='gray', label=f'{speed} km/h'))
         
         legend2 = ax.legend(handles=speed_legend_elements, 
-                           title='风速强度 Wind Speed', 
+                           title='Wind Speed', 
                            loc='upper right', bbox_to_anchor=(1.1, 1.0),
                            title_fontsize=14, fontsize=12,
                            facecolor='black', edgecolor='white', framealpha=0.9)
@@ -371,8 +371,8 @@ class EnhancedWindFlowerVisualizer:
         for text in legend2.get_texts():
             text.set_color('white')
         
-        # Bottom note
-        plt.figtext(0.02, 0.02, 'Note: Dot size reflects wind speed intensity, color indicates month/season',
+        # Bottom note (with more bottom margin)
+        plt.figtext(0.025, 0.025, 'Note: Dot size reflects wind speed intensity, color indicates month/season',
                    fontsize=8, color='#CCCCCC', style='italic')
 
 # Main program
