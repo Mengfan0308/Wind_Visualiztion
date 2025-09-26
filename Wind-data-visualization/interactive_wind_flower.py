@@ -159,159 +159,271 @@ class InteractiveWindFlowerVisualizer:
         
         # 应用布局
         self.app.layout = html.Div([
-            html.H1("🌸 Hong Kong International Airport 2024 Wind Flower 🌸", 
-                   style={'textAlign': 'center', 'color': 'white', 'backgroundColor': 'black'}),
+            html.H1("Hong Kong International Airport 2024 Wind Rose Visualization", 
+                   style={
+                       'textAlign': 'center', 
+                       'color': 'white', 
+                       'backgroundColor': 'black',
+                       'fontFamily': 'Bowlby One, Arial, sans-serif',
+                       'fontSize': '22px',
+                       'fontWeight': 'normal',
+                       'padding': '20px',
+                       'margin': '0'
+                   }),
             
-            html.Div([
-                html.Label("Select Display Month:", style={'color': 'white'}),
-                dcc.Slider(
-                    id='month-slider',
-                    min=1,
-                    max=12,
-                    step=1,
-                    value=12,
-                    marks={i: f'Month {i}' for i in range(1, 13)},
-                    tooltip={"placement": "bottom", "always_visible": True}
-                ),
-            ], style={'margin': '20px', 'backgroundColor': 'black', 'padding': '20px'}),
-            
-            html.Div([
-                html.Button('Play Animation', id='play-button', n_clicks=0,
-                           style={'margin': '10px', 'padding': '10px'}),
-                html.Button('Pause', id='pause-button', n_clicks=0,
-                           style={'margin': '10px', 'padding': '10px'}),
-                html.Button('Reset', id='reset-button', n_clicks=0,
-                           style={'margin': '10px', 'padding': '10px'}),
-            ], style={'textAlign': 'center', 'backgroundColor': 'black', 'padding': '10px'}),
-            
-            dcc.Graph(id='wind-flower-plot', style={'height': '700px'}),
-            
-            # 添加注释说明区域
+            # 紧凑控制面板
             html.Div([
                 html.Div([
-                    # 标题部分
-                    html.Div([
-                        html.Span("Data Statistics", style={'color': '#FFD700', 'fontSize': '16px', 'fontWeight': 'bold'}),
-                        html.Span(" & ", style={'color': 'white', 'fontSize': '14px', 'margin': '0 5px'}),
-                        html.Span("Visualization Guide", style={'color': '#FFD700', 'fontSize': '16px', 'fontWeight': 'bold'})
-                    ], style={'marginBottom': '12px'}),
+                    # Time Period 标签
+                    html.Label("Time Period", 
+                              style={'color': '#B3E6FF', 'fontSize': '10px', 'fontWeight': '500', 'marginBottom': '5px', 'display': 'block'}),
                     
-                    # 数据统计 - 两列布局
+                    # 时间滑块和按钮同行布局
                     html.Div([
-                        # 左列
+                        # 时间滑块（占更大空间，延伸到接近右边）
                         html.Div([
-                            html.Div([
-                                html.Span("☐ Total Records: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
-                                html.Span("366", style={'color': 'white', 'fontSize': '11px'})
-                            ], style={'marginBottom': '3px'}),
-                            html.Div([
-                                html.Span("☐ Wind Speed Range: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
-                                html.Span("7.9-32.0 km/h", style={'color': 'white', 'fontSize': '11px'})
-                            ], style={'marginBottom': '3px'}),
-                        ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top'}),
+                            dcc.Slider(
+                                id='month-slider',
+                                min=1,
+                                max=12,
+                                step=1,
+                                value=12,
+                                marks={i: f'{i}' for i in range(1, 13)},
+                                tooltip={"placement": "bottom", "always_visible": True}
+                            ),
+                        ], style={
+                            'width': 'calc(100% - 240px)', 
+                            'display': 'inline-block', 
+                            'verticalAlign': 'middle',
+                            'paddingRight': '15px'
+                        }),
                         
-                        # 右列  
+                        # 控制按钮（紧贴在数字12的右边）
                         html.Div([
-                            html.Div([
-                                html.Span("☐ Wind Direction Range: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
-                                html.Span("10° -360°", style={'color': 'white', 'fontSize': '11px'})
-                            ], style={'marginBottom': '3px'}),
-                            html.Div([
-                                html.Span("☐ Average Wind Speed: ", style={'color': '#B3E6FF', 'fontSize': '11px'}),
-                                html.Span("15.5 km/h", style={'color': 'white', 'fontSize': '11px'})
-                            ], style={'marginBottom': '3px'}),
-                        ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top', 'marginLeft': '10%'}),
-                    ], style={'marginBottom': '8px'}),
-                    
-                    # 可视化原理说明
-                    html.Div([
-                        html.Span("Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer) | Angle=Wind Direction | Distance=Wind Speed", 
-                                style={'color': '#B3E6FF', 'fontSize': '10px'})
-                    ], style={'marginBottom': '8px'}),
-                    
-                    # 季节色彩渐变系统标题
-                    html.Div([
-                        html.Span("Seasonal Color Gradient System", style={'color': '#B3E6FF', 'fontSize': '12px', 'fontWeight': 'bold'}),
-                        html.Span(", Colors Represent Months/Seasons", style={'color': '#B3E6FF', 'fontSize': '10px'})
-                    ], style={'marginBottom': '6px'}),
-                    
-                    # 四季颜色图例 - 原版布局
-                    html.Div([
-                        # 上排：春季和夏季
-                        html.Div([
-                            # 春季
-                            html.Div([
-                                html.Div([
-                                    html.Span("■", style={'color': '#FFB3E6', 'fontSize': '14px', 'marginRight': '5px'}),
-                                    html.Span("Spring", style={'color': 'white', 'fontSize': '11px'})
-                                ], style={'marginBottom': '3px'}),
-                                html.Div([
-                                    html.Span("● Mar", style={'color': '#FF4DD8', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● Apr", style={'color': '#FF80DF', 'fontSize': '10px', 'marginRight': '10px'}),  
-                                    html.Span("● May", style={'color': '#FFB3E6', 'fontSize': '10px'}),
-                                ]),
-                            ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top'}),
-                            
-                            # 夏季
-                            html.Div([
-                                html.Div([
-                                    html.Span("■", style={'color': '#4DFF4D', 'fontSize': '14px', 'marginRight': '5px'}),
-                                    html.Span("Summer", style={'color': 'white', 'fontSize': '11px'})
-                                ], style={'marginBottom': '3px'}),
-                                html.Div([
-                                    html.Span("● Jun", style={'color': '#1AFF1A', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● Jul", style={'color': '#4DFF4D', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● Aug", style={'color': '#80FF80', 'fontSize': '10px'}),
-                                ]),
-                            ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top', 'marginLeft': '10%'}),
-                        ], style={'marginBottom': '8px'}),
-                        
-                        # 下排：秋季和冬季
-                        html.Div([
-                            # 秋季
-                            html.Div([
-                                html.Div([
-                                    html.Span("■", style={'color': '#FFA54D', 'fontSize': '14px', 'marginRight': '5px'}),
-                                    html.Span("Autumn", style={'color': 'white', 'fontSize': '11px'})
-                                ], style={'marginBottom': '3px'}),
-                                html.Div([
-                                    html.Span("● Sep", style={'color': '#FF8F1A', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● Oct", style={'color': '#FFA54D', 'fontSize': '10px', 'marginRight': '8px'}),
-                                    html.Span("● Nov", style={'color': '#FFBB80', 'fontSize': '10px'}),
-                                ]),
-                            ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top'}),
-                            
-                            # 冬季
-                            html.Div([
-                                html.Div([
-                                    html.Span("■", style={'color': '#4DCCFF', 'fontSize': '14px', 'marginRight': '5px'}),
-                                    html.Span("Winter", style={'color': 'white', 'fontSize': '11px'})
-                                ], style={'marginBottom': '3px'}),
-                                html.Div([
-                                    html.Span("● Dec", style={'color': '#1ABFFF', 'fontSize': '10px', 'marginRight': '8px'}),
-                                    html.Span("● Jan", style={'color': '#4DCCFF', 'fontSize': '10px', 'marginRight': '10px'}),
-                                    html.Span("● Feb", style={'color': '#80D9FF', 'fontSize': '10px'}),
-                                ]),
-                            ], style={'display': 'inline-block', 'width': '45%', 'verticalAlign': 'top', 'marginLeft': '10%'}),
-                        ]),
-                    ]),
-                    
+                            html.Button('▶ Play', id='play-button', n_clicks=0,
+                                       style={
+                                           'margin': '0 6px', 
+                                           'padding': '4px 8px', 
+                                           'fontSize': '9px',
+                                           'backgroundColor': '#2E7D32',
+                                           'color': 'white',
+                                           'border': 'none',
+                                           'borderRadius': '3px',
+                                           'cursor': 'pointer'
+                                       }),
+                            html.Button('⏸ Pause', id='pause-button', n_clicks=0,
+                                       style={
+                                           'margin': '0 6px', 
+                                           'padding': '4px 8px', 
+                                           'fontSize': '9px',
+                                           'backgroundColor': '#F57C00',
+                                           'color': 'white',
+                                           'border': 'none',
+                                           'borderRadius': '3px',
+                                           'cursor': 'pointer'
+                                       }),
+                            html.Button('⟲ Reset', id='reset-button', n_clicks=0,
+                                       style={
+                                           'margin': '0 6px', 
+                                           'padding': '4px 8px', 
+                                           'fontSize': '9px',
+                                           'backgroundColor': '#5D4037',
+                                           'color': 'white',
+                                           'border': 'none',
+                                           'borderRadius': '3px',
+                                           'cursor': 'pointer'
+                                       }),
+                        ], style={
+                            'width': '240px',
+                            'display': 'inline-block', 
+                            'verticalAlign': 'middle',
+                            'textAlign': 'left',
+                            'paddingLeft': '0px'
+                        })
+                    ], style={
+                        'display': 'flex',
+                        'alignItems': 'center',
+                        'width': '100%'
+                    })
                 ], style={
-                    'position': 'fixed',
-                    'bottom': '20px',
-                    'left': '20px',
-                    'width': '420px',
-                    'height': '220px',
-                    'backgroundColor': 'rgba(0, 0, 0, 0.85)',
-                    'border': '1px solid #FFD700',
-                    'borderRadius': '8px',
-                    'padding': '12px',
-                    'fontFamily': 'Arial, sans-serif',
-                    'zIndex': '1000',
-                    'boxShadow': '0 4px 8px rgba(0, 0, 0, 0.5)',
-                    'overflow': 'visible'
+                    'maxWidth': '1000px',
+                    'margin': '0 auto',
+                    'padding': '0 25px'
                 })
-            ]),
+            ], style={
+                'backgroundColor': '#1A1A1A', 
+                'padding': '15px 0',
+                'borderBottom': '1px solid #333'
+            }),
+            
+            # 主图表区域
+            html.Div([
+                # 图表小标题（左对齐，缩小字体）
+                html.Div([
+                    html.Div(id='chart-subtitle', children="Wind Flower - Display up to Month 12", 
+                           style={
+                               'color': '#B3E6FF', 
+                               'fontSize': '12px', 
+                               'marginBottom': '10px',
+                               'marginLeft': '25px',
+                               'textAlign': 'left',
+                               'lineHeight': '1.4'
+                           })
+                ]),
+                
+                # 图表和内嵌注释
+                html.Div([
+                    dcc.Graph(id='wind-flower-plot', style={
+                        'height': '720px',
+                        'backgroundColor': 'transparent'
+                    }),
+                    
+                    # 左下角注释框（内嵌在图表区域）
+                    html.Div([
+                        html.Div([
+                            # 标题部分 - 黄色大标题
+                            html.Div([
+                                html.Span("Data Statistics & Visualization Guide", style={'color': '#FFD700', 'fontSize': '14px', 'fontWeight': 'bold'})
+                            ], style={'marginBottom': '8px'}),
+                            
+                            # 数据统计 - 白色小字
+                            html.Div([
+                                html.Span("• Total Records: 366  • Direction Range: 10°-360°", style={'color': 'white', 'fontSize': '9px', 'display': 'block', 'marginBottom': '2px'}),
+                                html.Span("• Speed Range: 7.9-32.0 km/h  • Average Speed: 15.5 km/h", style={'color': 'white', 'fontSize': '9px', 'display': 'block'})
+                            ], style={'marginBottom': '6px'}),
+                            
+                            # 可视化原理说明 - 白色文字
+                            html.Div([
+                                html.Span("Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer)", style={'color': 'white', 'fontSize': '9px', 'display': 'block', 'marginBottom': '2px'}),
+                                html.Span("Angle=Direction | Distance=Speed", style={'color': 'white', 'fontSize': '9px', 'display': 'block'})
+                            ], style={'marginBottom': '8px'}),
+                            
+                            # 季节色彩渐变系统标题 - 白色
+                            html.Div([
+                                html.Span("Seasonal Color Gradient System", style={'color': 'white', 'fontSize': '11px', 'fontWeight': 'bold'})
+                            ], style={'marginBottom': '6px'}),
+                            
+                            # 四季颜色图例 - 2x2网格布局
+                            html.Div([
+                                # 第一行：Spring 和 Summer
+                                html.Div([
+                                    # Spring
+                                    html.Div([
+                                        html.Div([
+                                            html.Span("■", style={'color': '#FF69B4', 'fontSize': '12px', 'marginRight': '4px'}),
+                                            html.Span("Spring", style={'color': 'white', 'fontSize': '10px', 'fontWeight': 'bold'})
+                                        ], style={'marginBottom': '3px'}),
+                                        html.Div([
+                                            html.Span("●", style={'color': '#FF1493', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Mar", style={'color': 'white', 'fontSize': '8px', 'marginRight': '8px'}),
+                                            html.Span("●", style={'color': '#FF69B4', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Apr", style={'color': 'white', 'fontSize': '8px', 'marginRight': '8px'}),
+                                            html.Span("●", style={'color': '#FFB6C1', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("May", style={'color': 'white', 'fontSize': '8px'}),
+                                        ])
+                                    ], style={'display': 'inline-block', 'width': '48%', 'verticalAlign': 'top'}),
+                                    
+                                    # Summer
+                                    html.Div([
+                                        html.Div([
+                                            html.Span("■", style={'color': '#32CD32', 'fontSize': '12px', 'marginRight': '4px'}),
+                                            html.Span("Summer", style={'color': 'white', 'fontSize': '10px', 'fontWeight': 'bold'})
+                                        ], style={'marginBottom': '3px'}),
+                                        html.Div([
+                                            html.Span("●", style={'color': '#00FF00', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Jun", style={'color': 'white', 'fontSize': '8px', 'marginRight': '8px'}),
+                                            html.Span("●", style={'color': '#32CD32', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Jul", style={'color': 'white', 'fontSize': '8px', 'marginRight': '8px'}),
+                                            html.Span("●", style={'color': '#90EE90', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Aug", style={'color': 'white', 'fontSize': '8px'}),
+                                        ])
+                                    ], style={'display': 'inline-block', 'width': '48%', 'verticalAlign': 'top', 'marginLeft': '4%'}),
+                                ], style={'marginBottom': '4px'}),
+                                
+                                # 第二行：Autumn 和 Winter
+                                html.Div([
+                                    # Autumn
+                                    html.Div([
+                                        html.Div([
+                                            html.Span("■", style={'color': '#FF8C00', 'fontSize': '12px', 'marginRight': '4px'}),
+                                            html.Span("Autumn", style={'color': 'white', 'fontSize': '10px', 'fontWeight': 'bold'})
+                                        ], style={'marginBottom': '3px'}),
+                                        html.Div([
+                                            html.Span("●", style={'color': '#FF4500', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Sep", style={'color': 'white', 'fontSize': '8px', 'marginRight': '8px'}),
+                                            html.Span("●", style={'color': '#FF8C00', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Oct", style={'color': 'white', 'fontSize': '8px', 'marginRight': '8px'}),
+                                            html.Span("●", style={'color': '#FFB84D', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Nov", style={'color': 'white', 'fontSize': '8px'}),
+                                        ])
+                                    ], style={'display': 'inline-block', 'width': '48%', 'verticalAlign': 'top'}),
+                                    
+                                    # Winter
+                                    html.Div([
+                                        html.Div([
+                                            html.Span("■", style={'color': '#1E90FF', 'fontSize': '12px', 'marginRight': '4px'}),
+                                            html.Span("Winter", style={'color': 'white', 'fontSize': '10px', 'fontWeight': 'bold'})
+                                        ], style={'marginBottom': '3px'}),
+                                        html.Div([
+                                            html.Span("●", style={'color': '#00BFFF', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Dec", style={'color': 'white', 'fontSize': '8px', 'marginRight': '8px'}),
+                                            html.Span("●", style={'color': '#1E90FF', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Jan", style={'color': 'white', 'fontSize': '8px', 'marginRight': '8px'}),
+                                            html.Span("●", style={'color': '#87CEEB', 'fontSize': '8px', 'marginRight': '2px'}),
+                                            html.Span("Feb", style={'color': 'white', 'fontSize': '8px'}),
+                                        ])
+                                    ], style={'display': 'inline-block', 'width': '48%', 'verticalAlign': 'top', 'marginLeft': '4%'}),
+                                ]),
+                                
+                                # Note说明
+                                html.Div([
+                                    html.Span("Note: Dot size reflects wind speed intensity, color indicates month/season", 
+                                             style={'color': '#888', 'fontSize': '8px', 'fontStyle': 'italic'})
+                                ], style={'marginTop': '6px'})
+                            ]),
+                            
+                        ], style={
+                            'position': 'absolute',
+                            'bottom': '25px',
+                            'left': '25px',
+                            'width': '420px',
+                            'height': '180px',
+                            'backgroundColor': 'rgba(0, 0, 0, 0.9)',
+                            'border': '0.5px solid #FFD700',
+                            'borderRadius': '8px',
+                            'padding': '12px 10px 24px 12px',
+                            'fontFamily': 'Arial, sans-serif',
+                            'zIndex': '1000',
+                            'boxShadow': '0 4px 15px rgba(0, 0, 0, 0.8)',
+                            'overflow': 'hidden'
+                        })
+                    ], style={'position': 'relative'})
+                ])
+            ], style={
+                'backgroundColor': '#0F0F0F',
+                'padding': '10px 0 20px 0',
+                'margin': '0'
+            }),
+
+            
+            # 现代化底部注释
+            html.Div([
+                html.Span("✦ Dot size reflects wind speed intensity, color indicates month/season", 
+                         style={
+                             'color': '#888', 
+                             'fontSize': '9px', 
+                             'fontStyle': 'italic',
+                             'fontWeight': '300'
+                         })
+            ], style={
+                'position': 'fixed',
+                'bottom': '15px',
+                'left': '30px',
+                'zIndex': '1000',
+                'backgroundColor': 'rgba(0, 0, 0, 0.7)',
+                'padding': '4px 8px',
+                'borderRadius': '4px'
+            }),
             
             dcc.Interval(
                 id='animation-interval',
@@ -322,14 +434,19 @@ class InteractiveWindFlowerVisualizer:
             
             html.Div(id='animation-state', style={'display': 'none'}, children='stopped'),
             
-        ], style={'backgroundColor': 'black'})
+        ], style={
+            'backgroundColor': '#000000',
+            'minHeight': '100vh',
+            'fontFamily': 'Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        })
         
         # 回调函数
         @self.app.callback(
             [Output('wind-flower-plot', 'figure'),
              Output('animation-interval', 'disabled'),
              Output('animation-state', 'children'),
-             Output('month-slider', 'value')],
+             Output('month-slider', 'value'),
+             Output('chart-subtitle', 'children')],
             [Input('month-slider', 'value'),
              Input('play-button', 'n_clicks'),
              Input('pause-button', 'n_clicks'),
@@ -395,7 +512,8 @@ class InteractiveWindFlowerVisualizer:
                 ),
                 text=filtered_data['hover_text'],
                 hovertemplate='%{text}<extra></extra>',
-                name='Wind Direction & Speed Data'
+                name='Wind Direction & Speed Data',
+                showlegend=False
             ))
             
             # 添加同心圆环（月份参考）
@@ -430,8 +548,7 @@ class InteractiveWindFlowerVisualizer:
             
             # 设置布局
             fig.update_layout(
-                title=f"🌸 Wind Flower - Display up to Month {current_month} 🌸<br>" +
-                      f"<span style='font-size:14px'>Data Points: {total_records} | Avg Speed: {avg_speed:.1f}km/h | Max Speed: {max_speed:.1f}km/h | Dominant Direction: {dominant_direction:.0f}°</span>",
+                title="",  # 移除重复的标题
                 title_font_size=20,
                 title_font_color='white',
                 paper_bgcolor='black',
@@ -463,7 +580,8 @@ class InteractiveWindFlowerVisualizer:
                 margin=dict(l=50, r=50, t=80, b=50)
             )
             
-            return fig, animation_disabled, current_state, current_month
+            subtitle = f"Wind Flower - Display up to Month {current_month}<br>Data Points: {total_records} | Avg Speed: {avg_speed:.1f}km/h | Max Speed: {max_speed:.1f}km/h | Dominant Direction: {dominant_direction:.0f}°"
+            return fig, animation_disabled, current_state, current_month, subtitle
         
         return self.app
 

@@ -168,11 +168,11 @@ class SimpleWindFlowerVisualizer:
         """Create beautiful wind flower visualization with simple single rendering"""
         print("🌸 Creating beautiful wind flower visualization...")
         
-        # Create figure with optimized settings and better layout
+        # Create figure with optimized settings and fixed design layout
         fig = plt.figure(figsize=(16, 16), facecolor='#0a0a0a', dpi=100)
         ax = plt.subplot(111, projection='polar', facecolor='#0a0a0a')
         
-        # Set balanced margins for optimal design layout
+        # Set fixed, balanced margins for optimal design layout - NO auto adjustment
         fig.subplots_adjust(left=0.1, right=0.9, top=0.88, bottom=0.12)
 
         # Define beautiful seasonal colors
@@ -260,11 +260,10 @@ class SimpleWindFlowerVisualizer:
         ax.grid(True, alpha=0.3, color='white', linestyle='--')
         ax.set_facecolor('#0a0a0a')
         
-        # Beautiful title - positioned higher with larger font
-        title_text = 'Hong Kong International Airport 2024 Wind Rose Flower \n' + \
-                    'Every petal tells a story of the sky'
+        # Beautiful title - clean and focused
+        title_text = 'Hong Kong International Airport 2024 Wind Rose Flower'
 
-        plt.suptitle(title_text, fontsize=20, color='white', 
+        plt.suptitle(title_text, fontsize=22, color='white', 
                     y=0.95, fontproperties=self.bowlby_props,
                     bbox=dict(boxstyle="round,pad=0.5", facecolor='black', alpha=0.8))
 
@@ -416,30 +415,23 @@ if __name__ == "__main__":
         # Create beautiful wind flower visualization
         fig, ax = visualizer.create_simple_wind_flower()
         
-        # Show the visualization with controlled window size and full content
+        # Show the visualization with controlled window size and stable layout
         print("\n🖥️ Opening visualization window...")
         
-        # Set fixed, well-balanced layout parameters for optimal design
-        plt.subplots_adjust(left=0.12, right=0.88, top=0.88, bottom=0.12)
-        
-        # Get the current figure manager and set window properties
+        # Get the current figure manager and set window properties BEFORE showing
         mngr = fig.canvas.manager
         if hasattr(mngr, 'window'):
             if hasattr(mngr.window, 'wm_geometry'):
                 # For TkAgg backend - set window size, position and title
-                mngr.window.wm_geometry('1500x1500+100+100')
+                mngr.window.wm_geometry('1200x1200+100+100')  # Smaller, more reasonable size
                 mngr.window.wm_title('Hong Kong Airport 2024 Wind Rose Flower - Interactive View')
             elif hasattr(mngr.window, 'setGeometry'):
                 # For Qt backend - set window geometry and title
-                mngr.window.setGeometry(100, 100, 1500, 1500)
+                mngr.window.setGeometry(100, 100, 1200, 1200)  # Smaller, more reasonable size
                 mngr.window.setWindowTitle('Hong Kong Airport 2024 Wind Rose Flower - Interactive View')
         
-        # Enable all toolbar functions for interaction (zoom, pan, home, etc.)
-        if hasattr(mngr, 'toolbar'):
-            mngr.toolbar.update()
-        
-        # Set window to be resizable
-        fig.canvas.mpl_connect('resize_event', lambda event: fig.tight_layout())
+        # Set the axes limits to ensure full view from start
+        ax.set_ylim(0, 14)
         
         plt.show()
         
