@@ -28,7 +28,6 @@ This project visualizes daily wind direction and speed data for Hong Kong Intern
  
 3. Launch interactive dashboard
    python "HKA_2024_Interactive_Wind_Flower.py"
-   # Open your browser at http://127.0.0.1:8050
 
 
 ## Project Structure
