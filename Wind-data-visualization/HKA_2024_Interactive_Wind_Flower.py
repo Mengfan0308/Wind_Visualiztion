@@ -18,8 +18,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
+
 import dash
 from dash import dcc, html, Input, Output, callback
 import warnings
@@ -34,51 +33,43 @@ class InteractiveWindFlowerVisualizer:
         self.combined_data = None
         self.app = None
         
+        # Define seasonal color palettes once
+        self.season_palettes = {
+            'Spring': ['#FFB3E6', '#FF80DF', '#FF4DD8', '#FF1AD1'],
+            'Summer': ['#B3FFB3', '#80FF80', '#4DFF4D', '#1AFF1A'],
+            'Autumn': ['#FFD1B3', '#FFBB80', '#FFA54D', '#FF8F1A'],
+            'Winter': ['#B3E6FF', '#80D9FF', '#4DCCFF', '#1ABFFF']
+        }
+        
+    def _parse_xml_file(self, xml_file, data_column):
+        """Generic XML parser for wind data files"""
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        
+        data = []
+        for row in root.findall(".//ss:Row", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"}):
+            cells = row.findall(".//ss:Cell/ss:Data", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"})
+            if len(cells) >= 4:
+                try:
+                    year = int(cells[0].text)
+                    month = int(cells[1].text)
+                    day = int(cells[2].text)
+                    value = float(cells[3].text)
+                    if year == 2024:
+                        data.append([year, month, day, value])
+                except (ValueError, TypeError):
+                    continue
+        
+        columns = ['year', 'month', 'day', data_column]
+        return pd.DataFrame(data, columns=columns)
+    
     def parse_xml_data(self, wind_dir_file, wind_speed_file):
         """Parse XML files and extract data"""
         print("📂 Parsing XML data files...")
         
-        # 解析风向数据
-        tree_dir = ET.parse(wind_dir_file)
-        root_dir = tree_dir.getroot()
-        
-        # 解析风速数据
-        tree_speed = ET.parse(wind_speed_file)
-        root_speed = tree_speed.getroot()
-        
-        # 提取风向数据
-        dir_data = []
-        for row in root_dir.findall(".//ss:Row", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"}):
-            cells = row.findall(".//ss:Cell/ss:Data", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"})
-            if len(cells) >= 4:
-                try:
-                    year = int(cells[0].text)
-                    month = int(cells[1].text)
-                    day = int(cells[2].text)
-                    direction = float(cells[3].text)
-                    if year == 2024:
-                        dir_data.append([year, month, day, direction])
-                except (ValueError, TypeError):
-                    continue
-        
-        # 提取风速数据
-        speed_data = []
-        for row in root_speed.findall(".//ss:Row", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"}):
-            cells = row.findall(".//ss:Cell/ss:Data", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"})
-            if len(cells) >= 4:
-                try:
-                    year = int(cells[0].text)
-                    month = int(cells[1].text)
-                    day = int(cells[2].text)
-                    speed = float(cells[3].text)
-                    if year == 2024:
-                        speed_data.append([year, month, day, speed])
-                except (ValueError, TypeError):
-                    continue
-        
-        # 转换为DataFrame
-        self.wind_direction_data = pd.DataFrame(dir_data, columns=['year', 'month', 'day', 'direction'])
-        self.wind_speed_data = pd.DataFrame(speed_data, columns=['year', 'month', 'day', 'speed'])
+        # Parse both files using generic method
+        self.wind_direction_data = self._parse_xml_file(wind_dir_file, 'direction')
+        self.wind_speed_data = self._parse_xml_file(wind_speed_file, 'speed')
         
         print(f"✅ Wind direction records: {len(self.wind_direction_data)}")
         print(f"✅ Wind speed records: {len(self.wind_speed_data)}")
@@ -89,7 +80,7 @@ class InteractiveWindFlowerVisualizer:
         """Data preprocessing and cleaning"""
         print("🔧 Processing data preprocessing...")
         
-        # 合并风向和风速数据
+        # Merge wind direction and speed data
         self.combined_data = pd.merge(
             self.wind_direction_data, 
             self.wind_speed_data,
@@ -97,12 +88,12 @@ class InteractiveWindFlowerVisualizer:
             how='inner'
         )
         
-        # 创建日期列
+        # Create date column
         self.combined_data['date'] = pd.to_datetime(
             self.combined_data[['year', 'month', 'day']]
         )
         
-        # 计算季节
+        # Calculate seasons
         def get_season(month):
             if month in [3, 4, 5]:
                 return 'Spring'
@@ -115,30 +106,25 @@ class InteractiveWindFlowerVisualizer:
         
         self.combined_data['season'] = self.combined_data['month'].apply(get_season)
         
-        # 添加颜色映射
-        season_palettes = {
-            'Spring': ['#FFB3E6', '#FF80DF', '#FF4DD8', '#FF1AD1'],
-            'Summer': ['#B3FFB3', '#80FF80', '#4DFF4D', '#1AFF1A'],
-            'Autumn': ['#FFD1B3', '#FFBB80', '#FFA54D', '#FF8F1A'],
-            'Winter': ['#B3E6FF', '#80D9FF', '#4DCCFF', '#1ABFFF']
-        }
+        # Generate monthly color mapping from seasonal palettes
+        month_colors = {}
+        seasons = [('Spring', [3, 4, 5]), ('Summer', [6, 7, 8]), 
+                  ('Autumn', [9, 10, 11]), ('Winter', [12, 1, 2])]
         
-        month_colors = {
-            3: season_palettes['Spring'][2], 4: season_palettes['Spring'][3], 5: season_palettes['Spring'][0],
-            6: season_palettes['Summer'][1], 7: season_palettes['Summer'][2], 8: season_palettes['Summer'][3],
-            9: season_palettes['Autumn'][0], 10: season_palettes['Autumn'][1], 11: season_palettes['Autumn'][2],
-            12: season_palettes['Winter'][3], 1: season_palettes['Winter'][0], 2: season_palettes['Winter'][1]
-        }
+        for season_name, months in seasons:
+            colors = self.season_palettes[season_name]
+            for i, month in enumerate(months):
+                month_colors[month] = colors[i % len(colors)]
         
         self.combined_data['color'] = self.combined_data['month'].map(month_colors)
         
-        # 转换为极坐标
-        self.combined_data['theta'] = 90 - self.combined_data['direction']  # 转换为数学角度
+        # Convert to polar coordinates
+        self.combined_data['theta'] = 90 - self.combined_data['direction']  # Convert to mathematical angle
         self.combined_data['r'] = self.combined_data['month'] + \
                                  (self.combined_data['speed'] - self.combined_data['speed'].min()) / \
                                  (self.combined_data['speed'].max() - self.combined_data['speed'].min()) * 0.8
         
-        # 添加悬停信息
+        # Add hover information
         self.combined_data['hover_text'] = self.combined_data.apply(
             lambda row: f"Date: {row['date'].strftime('%Y-%m-%d')}<br>" +
                        f"Wind Direction: {row['direction']:.1f}°<br>" +
@@ -154,10 +140,10 @@ class InteractiveWindFlowerVisualizer:
     def create_interactive_app(self):
         """Create interactive Dash application"""
         
-        # 初始化Dash应用
+        # Initialize Dash application
         self.app = dash.Dash(__name__)
         
-        # 应用布局
+        # Application layout
         self.app.layout = html.Div([
             html.H1("Hong Kong International Airport 2024 Wind Rose Visualization", 
                    style={
@@ -171,16 +157,16 @@ class InteractiveWindFlowerVisualizer:
                        'margin': '0'
                    }),
             
-            # 紧凑控制面板
+            # Compact control panel
             html.Div([
                 html.Div([
-                    # Time Period 标签
+                    # Time Period label
                     html.Label("Time Period", 
                               style={'color': '#B3E6FF', 'fontSize': '10px', 'fontWeight': '500', 'marginBottom': '5px', 'display': 'block'}),
                     
-                    # 时间滑块和按钮同行布局
+                    # Time slider and buttons inline layout
                     html.Div([
-                        # 时间滑块（占更大空间，延伸到接近右边）
+                        # Time slider (takes larger space, extends close to right edge)
                         html.Div([
                             dcc.Slider(
                                 id='month-slider',
@@ -198,7 +184,7 @@ class InteractiveWindFlowerVisualizer:
                             'paddingRight': '15px'
                         }),
                         
-                        # 控制按钮（紧贴在数字12的右边）
+                        # Control buttons (close to the right of number 12)
                         html.Div([
                             html.Button('▶ Play', id='play-button', n_clicks=0,
                                        style={
@@ -256,9 +242,9 @@ class InteractiveWindFlowerVisualizer:
                 'borderBottom': '1px solid #333'
             }),
             
-            # 主图表区域
+            # Main chart area
             html.Div([
-                # 图表小标题（左对齐，缩小字体）
+                # Chart subtitle (left-aligned, smaller font)
                 html.Div([
                     html.Div(id='chart-subtitle', children="Wind Flower - Display up to Month 12", 
                            style={
@@ -271,41 +257,41 @@ class InteractiveWindFlowerVisualizer:
                            })
                 ]),
                 
-                # 图表和内嵌注释
+                # Chart and embedded annotations
                 html.Div([
                     dcc.Graph(id='wind-flower-plot', style={
                         'height': '720px',
                         'backgroundColor': 'transparent'
                     }),
                     
-                    # 左下角注释框（内嵌在图表区域）
+                    # Bottom-left annotation box (embedded in chart area)
                     html.Div([
                         html.Div([
-                            # 标题部分 - 黄色大标题
+                            # Title section - large yellow title
                             html.Div([
                                 html.Span("Data Statistics & Visualization Guide", style={'color': '#FFD700', 'fontSize': '14px', 'fontWeight': 'bold'})
                             ], style={'marginBottom': '8px'}),
                             
-                            # 数据统计 - 白色小字
+                            # Data statistics - small white text
                             html.Div([
                                 html.Span("• Total Records: 366  • Direction Range: 10°-360°", style={'color': 'white', 'fontSize': '9px', 'display': 'block', 'marginBottom': '2px'}),
                                 html.Span("• Speed Range: 7.9-32.0 km/h  • Average Speed: 15.5 km/h", style={'color': 'white', 'fontSize': '9px', 'display': 'block'})
                             ], style={'marginBottom': '6px'}),
                             
-                            # 可视化原理说明 - 白色文字
+                            # Visualization principle explanation - white text
                             html.Div([
                                 html.Span("Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer)", style={'color': 'white', 'fontSize': '9px', 'display': 'block', 'marginBottom': '2px'}),
                                 html.Span("Angle=Direction | Distance=Speed", style={'color': 'white', 'fontSize': '9px', 'display': 'block'})
                             ], style={'marginBottom': '8px'}),
                             
-                            # 季节色彩渐变系统标题 - 白色
+                            # Seasonal color gradient system title - white
                             html.Div([
                                 html.Span("Seasonal Color Gradient System", style={'color': 'white', 'fontSize': '11px', 'fontWeight': 'bold'})
                             ], style={'marginBottom': '6px'}),
                             
-                            # 四季颜色图例 - 2x2网格布局
+                            # Four seasons color legend - 2x2 grid layout
                             html.Div([
-                                # 第一行：Spring 和 Summer
+                                # First row: Spring and Summer
                                 html.Div([
                                     # Spring
                                     html.Div([
@@ -340,7 +326,7 @@ class InteractiveWindFlowerVisualizer:
                                     ], style={'display': 'inline-block', 'width': '48%', 'verticalAlign': 'top', 'marginLeft': '4%'}),
                                 ], style={'marginBottom': '4px'}),
                                 
-                                # 第二行：Autumn 和 Winter
+                                # Second row: Autumn and Winter
                                 html.Div([
                                     # Autumn
                                     html.Div([
@@ -375,7 +361,7 @@ class InteractiveWindFlowerVisualizer:
                                     ], style={'display': 'inline-block', 'width': '48%', 'verticalAlign': 'top', 'marginLeft': '4%'}),
                                 ]),
                                 
-                                # Note说明
+                                # Note explanation
                                 html.Div([
                                     html.Span("Note: Dot size reflects wind speed intensity, color indicates month/season", 
                                              style={'color': '#888', 'fontSize': '8px', 'fontStyle': 'italic'})
@@ -406,7 +392,7 @@ class InteractiveWindFlowerVisualizer:
             }),
 
             
-            # 现代化底部注释
+            # Modern bottom annotation
             html.Div([
                 html.Span("✦ Dot size reflects wind speed intensity, color indicates month/season", 
                          style={
@@ -427,9 +413,9 @@ class InteractiveWindFlowerVisualizer:
             
             dcc.Interval(
                 id='animation-interval',
-                interval=1000,  # 1秒更新一次
+                interval=1000, 
                 n_intervals=0,
-                disabled=True  # 默认禁用
+                disabled=True  
             ),
             
             html.Div(id='animation-state', style={'display': 'none'}, children='stopped'),
@@ -440,7 +426,7 @@ class InteractiveWindFlowerVisualizer:
             'fontFamily': 'Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         })
         
-        # 回调函数
+        # Callback functions
         @self.app.callback(
             [Output('wind-flower-plot', 'figure'),
              Output('animation-interval', 'disabled'),
@@ -462,7 +448,7 @@ class InteractiveWindFlowerVisualizer:
             else:
                 trigger = ctx.triggered[0]['prop_id'].split('.')[0]
             
-            # 动画状态管理
+            # Animation state management
             current_state = 'stopped'
             animation_disabled = True
             current_month = selected_month
@@ -487,25 +473,20 @@ class InteractiveWindFlowerVisualizer:
                     animation_disabled = True
                     current_state = 'completed'
             
-            # 筛选数据
+            # Filter data
             filtered_data = self.combined_data[self.combined_data['month'] <= current_month]
-            
-            # 计算统计信息
             total_records = len(filtered_data)
-            avg_speed = filtered_data['speed'].mean() if len(filtered_data) > 0 else 0
-            max_speed = filtered_data['speed'].max() if len(filtered_data) > 0 else 0
-            dominant_direction = filtered_data['direction'].mode().iloc[0] if len(filtered_data) > 0 else 0
             
-            # 创建极坐标图
+            # Create polar coordinate plot
             fig = go.Figure()
             
-            # 添加数据点
+            # Add data points
             fig.add_trace(go.Scatterpolar(
                 r=filtered_data['r'],
                 theta=filtered_data['theta'],
                 mode='markers',
                 marker=dict(
-                    size=filtered_data['speed'] / 2 + 5,  # 根据风速调整大小
+                    size=filtered_data['speed'] / 2 + 5,  # Adjust size based on wind speed
                     color=filtered_data['color'],
                     opacity=0.8,
                     line=dict(width=1, color='white')
@@ -516,7 +497,7 @@ class InteractiveWindFlowerVisualizer:
                 showlegend=False
             ))
             
-            # 添加同心圆环（月份参考）
+            # Add concentric circles (month reference)
             for month in range(1, 13):
                 circle_r = [month] * 360
                 circle_theta = list(range(360))
@@ -530,14 +511,14 @@ class InteractiveWindFlowerVisualizer:
                     showlegend=False
                 ))
             
-            # 添加月份标签在180°线位置
+            # Add month labels at 180° line position
             month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
             
             for month in range(1, 13):
                 fig.add_trace(go.Scatterpolar(
                     r=[month],
-                    theta=[180],  # 180°线位置
+                    theta=[180],  # 180° line position
                     mode='text',
                     text=[month_names[month-1]],
                     textfont=dict(size=10, color='white'),
@@ -546,11 +527,9 @@ class InteractiveWindFlowerVisualizer:
                     showlegend=False
                 ))
             
-            # 设置布局
+            # Configure layout
             fig.update_layout(
-                title="",  # 移除重复的标题
-                title_font_size=20,
-                title_font_color='white',
+                title="",
                 paper_bgcolor='black',
                 plot_bgcolor='black',
                 polar=dict(
@@ -565,7 +544,7 @@ class InteractiveWindFlowerVisualizer:
                         tick0=0,
                         dtick=2,
                         tickfont=dict(color='white', size=10),
-                        showticklabels=False  # 隐藏径向轴刻度标签
+                        showticklabels=False
                     ),
                     angularaxis=dict(
                         visible=True,
@@ -580,7 +559,7 @@ class InteractiveWindFlowerVisualizer:
                 margin=dict(l=50, r=50, t=80, b=50)
             )
             
-            subtitle = f"Wind Flower - Display up to Month {current_month}<br>Data Points: {total_records} | Avg Speed: {avg_speed:.1f}km/h | Max Speed: {max_speed:.1f}km/h | Dominant Direction: {dominant_direction:.0f}°"
+            subtitle = f"Wind Flower - Display up to Month {current_month}"
             return fig, animation_disabled, current_state, current_month, subtitle
         
         return self.app

@@ -17,9 +17,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 from matplotlib.patches import Circle, Rectangle
-from matplotlib.collections import LineCollection
 from datetime import datetime
 import warnings
 import sys
@@ -74,52 +72,44 @@ class SimpleWindFlowerVisualizer:
         self.corbel_props = {'family': 'Corbel'}
         self.corbel_bold_props = {'family': 'Corbel', 'weight': 'bold'}
         self.corbel_italic_props = {'family': 'Corbel', 'style': 'italic'}
+        
+        # Define seasonal color palettes once
+        self.season_palettes = {
+            'Spring': ['#FFB3E6', '#FF80DF', '#FF4DD8', '#FF1AD1'],
+            'Summer': ['#B3FFB3', '#80FF80', '#4DFF4D', '#1AFF1A'],
+            'Autumn': ['#FFD1B3', '#FFBB80', '#FFA54D', '#FF8F1A'],
+            'Winter': ['#B3E6FF', '#80D9FF', '#4DCCFF', '#1ABFFF']
+        }
+    
+    def _parse_xml_file(self, xml_file, data_column):
+        """Generic XML parser for wind data files"""
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        
+        data = []
+        for row in root.findall(".//ss:Row", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"}):
+            cells = row.findall(".//ss:Cell/ss:Data", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"})
+            if len(cells) >= 4:
+                try:
+                    year = int(cells[0].text)
+                    month = int(cells[1].text)
+                    day = int(cells[2].text)
+                    value = float(cells[3].text)
+                    if year == 2024:
+                        data.append([year, month, day, value])
+                except (ValueError, TypeError):
+                    continue
+        
+        columns = ['year', 'month', 'day', data_column]
+        return pd.DataFrame(data, columns=columns)
     
     def parse_xml_data(self, wind_dir_file, wind_speed_file):
         """Parse XML files and extract data"""
         print("📂 Parsing XML data files...")
         
-        # Parse wind direction data
-        tree_dir = ET.parse(wind_dir_file)
-        root_dir = tree_dir.getroot()
-        
-        # Parse wind speed data
-        tree_speed = ET.parse(wind_speed_file)
-        root_speed = tree_speed.getroot()
-        
-        # Extract wind direction data
-        dir_data = []
-        for row in root_dir.findall(".//ss:Row", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"}):
-            cells = row.findall(".//ss:Cell/ss:Data", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"})
-            if len(cells) >= 4:
-                try:
-                    year = int(cells[0].text)
-                    month = int(cells[1].text)
-                    day = int(cells[2].text)
-                    direction = float(cells[3].text)
-                    if year == 2024:
-                        dir_data.append([year, month, day, direction])
-                except (ValueError, TypeError):
-                    continue
-        
-        # Extract wind speed data
-        speed_data = []
-        for row in root_speed.findall(".//ss:Row", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"}):
-            cells = row.findall(".//ss:Cell/ss:Data", {"ss": "urn:schemas-microsoft-com:office:spreadsheet"})
-            if len(cells) >= 4:
-                try:
-                    year = int(cells[0].text)
-                    month = int(cells[1].text)
-                    day = int(cells[2].text)
-                    speed = float(cells[3].text)
-                    if year == 2024:
-                        speed_data.append([year, month, day, speed])
-                except (ValueError, TypeError):
-                    continue
-        
-        # Convert to DataFrame
-        self.wind_direction_data = pd.DataFrame(dir_data, columns=['year', 'month', 'day', 'direction'])
-        self.wind_speed_data = pd.DataFrame(speed_data, columns=['year', 'month', 'day', 'speed'])
+        # Parse both files using generic method
+        self.wind_direction_data = self._parse_xml_file(wind_dir_file, 'direction')
+        self.wind_speed_data = self._parse_xml_file(wind_speed_file, 'speed')
         
         print(f"✅ Wind direction records: {len(self.wind_direction_data)}")
         print(f"✅ Wind speed records: {len(self.wind_speed_data)}")
@@ -175,24 +165,16 @@ class SimpleWindFlowerVisualizer:
         # Set fixed, balanced margins for optimal design layout - NO auto adjustment
         fig.subplots_adjust(left=0.1, right=0.9, top=0.88, bottom=0.12)
 
-        # Define beautiful seasonal colors
-        season_palettes = {
-            'Spring': ['#FFB3E6', '#FF80DF', '#FF4DD8', '#FF1AD1'],  # Cherry blossom pink
-            'Summer': ['#B3FFB3', '#80FF80', '#4DFF4D', '#1AFF1A'],  # Emerald green
-            'Autumn': ['#FFD1B3', '#FFBB80', '#FFA54D', '#FF8F1A'],  # Golden orange  
-            'Winter': ['#B3E6FF', '#80D9FF', '#4DCCFF', '#1ABFFF']   # Ice blue
-        }
-
-        # Create beautiful visualization for each data point
+        # Create visualization for each month
         for month in range(1, 13):
             month_data = self.combined_data[self.combined_data['month'] == month]
             
             if len(month_data) == 0:
                 continue
             
-            # Get season and corresponding colors
+            # Get season colors
             season = month_data.iloc[0]['season']
-            color_palette = season_palettes[season]
+            color_palette = self.season_palettes[season]
             color_idx = (month - 1) % 4
             main_color = color_palette[color_idx]
             
@@ -221,14 +203,10 @@ class SimpleWindFlowerVisualizer:
                 ax.scatter(angle, radius, s=point_size, c=main_color, 
                           alpha=0.8, edgecolors='white', linewidth=0.5)
 
-        # Concentric rings
+        # Add concentric month rings
         for month in range(1, 13):
-            circle_color = "#ffffff"
-            circle_alpha = 0.02  
-            
-            # Main rings
             circle = Circle((0, 0), month * 1.0, fill=False, 
-                          color=circle_color, alpha=circle_alpha, linewidth=1.5)
+                          color="#ffffff", alpha=0.02, linewidth=1.5)
             ax.add_patch(circle)
 
         # Add month labels
@@ -260,19 +238,16 @@ class SimpleWindFlowerVisualizer:
         ax.grid(True, alpha=0.3, color='white', linestyle='--')
         ax.set_facecolor('#0a0a0a')
         
-        # Beautiful title - clean and focused
-        title_text = 'Hong Kong International Airport 2024 Wind Rose Flower'
-
-        plt.suptitle(title_text, fontsize=22, color='white', 
-                    y=0.95, fontproperties=self.bowlby_props,
+        # Add title
+        plt.suptitle('Hong Kong International Airport 2024 Wind Rose Flower', 
+                    fontsize=22, color='white', y=0.95, fontproperties=self.bowlby_props,
                     bbox=dict(boxstyle="round,pad=0.5", facecolor='black', alpha=0.8))
 
-        # Add simple annotations and legends
+        # Add annotations and legends
         self._add_simple_annotations(fig, ax)
         
-        # Artistic signature - optimized
-        plt.figtext(0.98, 0.02, 
-                   'PROGRAMMING FOR ARTISTS AND DESIGNERS',
+        # Add signature
+        plt.figtext(0.98, 0.02, 'PROGRAMMING FOR ARTISTS AND DESIGNERS',
                    fontsize=10, color='#FFD700', fontproperties=self.corbel_italic_props,
                    horizontalalignment='right', verticalalignment='bottom')
 
@@ -288,21 +263,15 @@ class SimpleWindFlowerVisualizer:
     def _add_simple_annotations(self, fig, ax):
         """Add simple annotations and legends"""
         
-        # Seasonal color definition
-        season_palettes = {
-            'Spring': ['#FFB3E6', '#FF80DF', '#FF4DD8', '#FF1AD1'],
-            'Summer': ['#B3FFB3', '#80FF80', '#4DFF4D', '#1AFF1A'],
-            'Autumn': ['#FFD1B3', '#FFBB80', '#FFA54D', '#FF8F1A'],
-            'Winter': ['#B3E6FF', '#80D9FF', '#4DCCFF', '#1ABFFF']
-        }
+        # Generate monthly color mapping from seasonal palettes
+        month_colors = {}
+        seasons = [('Spring', [3, 4, 5]), ('Summer', [6, 7, 8]), 
+                  ('Autumn', [9, 10, 11]), ('Winter', [12, 1, 2])]
         
-        # Monthly color mapping
-        month_colors = {
-            3: season_palettes['Spring'][2], 4: season_palettes['Spring'][3], 5: season_palettes['Spring'][0],
-            6: season_palettes['Summer'][1], 7: season_palettes['Summer'][2], 8: season_palettes['Summer'][3],
-            9: season_palettes['Autumn'][0], 10: season_palettes['Autumn'][1], 11: season_palettes['Autumn'][2],
-            12: season_palettes['Winter'][3], 1: season_palettes['Winter'][0], 2: season_palettes['Winter'][1]
-        }
+        for season_name, months in seasons:
+            colors = self.season_palettes[season_name]
+            for i, month in enumerate(months):
+                month_colors[month] = colors[i % len(colors)]
         
         # Create annotation background (optimized for larger window)
         annotation_bg = Rectangle((0.01, 0.01), 0.35, 0.20, 
@@ -345,9 +314,8 @@ class SimpleWindFlowerVisualizer:
         for row in seasons_layout:
             for season_name, months, x_pos, y_pos in row:
                 # Season gradient squares
-                season_key = season_name
-                if season_key in season_palettes:
-                    colors = season_palettes[season_key]
+                if season_name in self.season_palettes:
+                    colors = self.season_palettes[season_name]
                     main_color = colors[1]
                     season_rect = Rectangle((x_pos, y_pos-0.003), 0.012, 0.012, 
                                           transform=fig.transFigure,
