@@ -18,6 +18,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import os
 
 import dash
 from dash import dcc, html, Input, Output, callback
@@ -592,8 +593,17 @@ def main():
     print("   • Hover over data points for details")
     print("   • Point size represents wind speed, color represents season")
     
-    # Run application
-    app.run(debug=True, host='127.0.0.1', port=8050)
+    # Configuration for deployment
+    port = int(os.environ.get('PORT', 8050))
+    host = os.environ.get('HOST', '127.0.0.1')
+    
+    # Check if running in production environment (Heroku, Render, etc.)
+    if 'DYNO' in os.environ or 'RENDER' in os.environ:
+        # Production deployment
+        app.run(debug=False, host='0.0.0.0', port=port)
+    else:
+        # Local development
+        app.run(debug=True, host=host, port=port)
 
 if __name__ == "__main__":
     main()

@@ -157,6 +157,55 @@ Wind-data-visualization/
 - Color gradients are designed for accessibility and aesthetic appeal
 - All timestamps are in Hong Kong Standard Time (UTC+8)
 
+## 🌐 Online Deployment Options
+
+### Why GitHub Can't Run Interactive Apps Directly
+
+GitHub Pages only supports static websites (HTML/CSS/JS), not server-side Python applications like Dash. Interactive visualizations require a running Python server to process user interactions and generate dynamic content.
+
+### Recommended Deployment Solutions
+
+#### 1. Streamlit Cloud (Easiest)
+- **Free hosting** for Streamlit applications
+- **Direct GitHub integration** - just connect your repository
+- **Automatic deployment** when you push changes
+- **Public URL** for easy sharing
+
+**Steps:**
+1. Push your project to GitHub
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Connect your GitHub account and select this repository
+4. Choose `streamlit_wind_flower.py` as the main file
+5. Deploy and get your public URL!
+
+#### 2. Heroku (Full Control)
+- **Free tier available** (with limitations)
+- **Supports both Dash and Streamlit** applications
+- **Custom domain** support
+- **Environment variables** for configuration
+
+#### 3. Render.com (Modern Alternative)
+- **Free tier with better performance** than Heroku
+- **Automatic deployments** from GitHub
+- **Built-in SSL certificates**
+- **Zero-config deployment** for Python apps
+
+### Quick Start: Streamlit Deployment
+```bash
+# Install Streamlit locally to test
+pip install streamlit
+
+# Run the Streamlit version
+streamlit run streamlit_wind_flower.py
+
+# Push to GitHub and deploy to Streamlit Cloud
+git add .
+git commit -m "Add Streamlit version for deployment"
+git push origin main
+```
+
+Then visit [share.streamlit.io](https://share.streamlit.io) to deploy!
+
 ---
 
-*This project demonstrates the intersection of scientific data analysis and artistic visualization, transforming raw meteorological measurements into beautiful, informative displays.*
+*This project demonstrates the intersection of scientific data analysis and artistic visualization, transforming raw meteorological measurements into beautiful, informative displays that can be shared worldwide through cloud deployment.*
