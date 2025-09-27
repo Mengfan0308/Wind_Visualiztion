@@ -312,30 +312,30 @@ class SimpleWindFlowerVisualizer:
         fig.patches.append(annotation_bg)
         
         # Main title (with more top margin) - optimized
-        plt.figtext(0.025, 0.185, 'Data Statistics & Visualization Guide', 
+        plt.figtext(0.025, 0.180, 'Data Statistics & Visualization Guide', 
                    fontsize=14, color='#FFD700', fontproperties=self.bowlby_props)
         
-        # Data statistics (increased line spacing)
+        # Data statistics (optimized line spacing)
         stats_line1 = f"• Total Records: {len(self.combined_data)}  • Direction Range: {self.combined_data['direction'].min():.0f}°-{self.combined_data['direction'].max():.0f}°"
         stats_line2 = f"• Speed Range: {self.combined_data['speed'].min():.1f}-{self.combined_data['speed'].max():.1f} km/h  • Average Speed: {self.combined_data['speed'].mean():.1f} km/h"
         
-        plt.figtext(0.025, 0.155, stats_line1, fontsize=9, color='white', fontproperties=self.corbel_props)
-        plt.figtext(0.025, 0.135, stats_line2, fontsize=9, color='white', fontproperties=self.corbel_props)
+        plt.figtext(0.025, 0.158, stats_line1, fontsize=9, color='white', fontproperties=self.corbel_props)
+        plt.figtext(0.025, 0.144, stats_line2, fontsize=9, color='white', fontproperties=self.corbel_props)
         
-        # Visualization explanation (split into two lines to fit within frame) - optimized
-        plt.figtext(0.025, 0.115, 'Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer)', 
+        # Visualization explanation (split into two lines to fit within frame) - optimized spacing
+        plt.figtext(0.025, 0.125, 'Visualization Principle: Concentric Circles=Months (Jan=Inner→Dec=Outer)', 
                    fontsize=9, color='white', fontproperties=self.corbel_props)
-        plt.figtext(0.025, 0.100, 'Angle=Direction | Distance=Speed', 
+        plt.figtext(0.025, 0.111, 'Angle=Direction | Distance=Speed', 
                    fontsize=9, color='white', fontproperties=self.corbel_props)
         
-        # Seasonal color system title - using regular text font
-        plt.figtext(0.025, 0.082, 'Seasonal Color Gradient System', 
+        # Seasonal color system title - using regular text font (increased spacing)
+        plt.figtext(0.025, 0.092, 'Seasonal Color Gradient System', 
                    fontsize=11, color='white', fontproperties=self.corbel_bold_props)
         
         # Draw seasonal colors
         seasons_layout = [
-            [('Spring', [3, 4, 5], 0.025, 0.065), ('Summer', [6, 7, 8], 0.19, 0.065)],
-            [('Autumn', [9, 10, 11], 0.025, 0.040), ('Winter', [12, 1, 2], 0.19, 0.040)]
+            [('Spring', [3, 4, 5], 0.025, 0.070), ('Summer', [6, 7, 8], 0.19, 0.070)],
+            [('Autumn', [9, 10, 11], 0.025, 0.045), ('Winter', [12, 1, 2], 0.19, 0.045)]
         ]
         
         # Month names for better readability
