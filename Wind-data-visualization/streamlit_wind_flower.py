@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import os
 
 class StreamlitWindFlowerVisualizer:
     """Streamlit Wind Flower Visualizer for easy deployment"""
@@ -26,27 +27,82 @@ class StreamlitWindFlowerVisualizer:
         }
         
     def parse_xml_file(self, file_path):
-        """Parse XML wind data file"""
+        """Parse XML wind data file (Microsoft Office XML format)"""
         try:
+            if not os.path.exists(file_path):
+                st.error(f"File not found: {file_path}")
+                return pd.DataFrame()
+                
             tree = ET.parse(file_path)
             root = tree.getroot()
             
-            data = []
-            for record in root.findall('.//record'):
-                year = record.find('year')
-                month = record.find('month') 
-                day = record.find('day')
-                value = record.find('value')
-                
-                if all(x is not None for x in [year, month, day, value]):
-                    data.append({
-                        'year': int(year.text),
-                        'month': int(month.text),
-                        'day': int(day.text), 
-                        'value': float(value.text)
-                    })
+            # Define namespace for Microsoft Office XML
+            ns = {'ss': 'urn:schemas-microsoft-com:office:spreadsheet'}
             
-            return pd.DataFrame(data)
+            data = []
+            rows = root.findall('.//ss:Row', ns)
+            
+            # Skip header rows (first 3 rows are headers)
+            data_rows = rows[3:]
+            
+            for row in data_rows:
+                cells = row.findall('ss:Cell/ss:Data', ns)
+                
+                if len(cells) >= 4:  # Need at least year, month, day, value
+                    try:
+                        # Extract year, month, day, and value
+                        year_text = cells[0].text
+                        month_text = cells[1].text
+                        day_text = cells[2].text
+                        value_text = cells[3].text
+                        
+                        # Skip non-numeric rows (like footer text)
+                        if not all([year_text, month_text, day_text, value_text]):
+                            continue
+                            
+                        # Try to convert to numbers
+                        year = int(float(year_text))
+                        month = int(float(month_text))
+                        day = int(float(day_text))
+                        
+                        # Handle different value formats (some have leading zeros as strings)
+                        try:
+                            value = float(value_text)
+                        except ValueError:
+                            # Skip non-numeric values
+                            continue
+                        
+                        # Validate reasonable ranges
+                        if 2020 <= year <= 2030 and 1 <= month <= 12 and 1 <= day <= 31 and 0 <= value <= 360:
+                            data.append({
+                                'year': int(year),
+                                'month': int(month),
+                                'day': int(day),
+                                'value': float(value)
+                            })
+                    except (ValueError, TypeError, IndexError):
+                        # Skip rows that can't be parsed
+                        continue
+            
+            if not data:
+                st.warning(f"No valid data found in {os.path.basename(file_path)}")
+            else:
+                st.success(f"Loaded {len(data)} records from {os.path.basename(file_path)}")
+                
+            df = pd.DataFrame(data)
+            if not df.empty:
+                # Ensure proper data types
+                df['year'] = df['year'].astype(int)
+                df['month'] = df['month'].astype(int)
+                df['day'] = df['day'].astype(int)
+                df['value'] = df['value'].astype(float)
+            return df
+        except FileNotFoundError:
+            st.error(f"File not found: {file_path}")
+            return pd.DataFrame()
+        except ET.ParseError as e:
+            st.error(f"XML parsing error in {file_path}: {str(e)}")
+            return pd.DataFrame()
         except Exception as e:
             st.error(f"Error parsing {file_path}: {str(e)}")
             return pd.DataFrame()
@@ -119,7 +175,7 @@ class StreamlitWindFlowerVisualizer:
                 opacity=0.7,
                 line=dict(width=0.5, color='white')
             ),
-            text=[f"Date: {row['year']}-{row['month']:02d}-{row['day']:02d}<br>"
+            text=[f"Date: {int(row['year'])}-{int(row['month']):02d}-{int(row['day']):02d}<br>"
                  f"Direction: {row['value_dir']:.1f}°<br>"
                  f"Speed: {row['value_speed']:.1f} km/h"
                  for _, row in merged_data.iterrows()],
@@ -246,12 +302,22 @@ def main():
     
     # Load data
     try:
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Construct absolute paths to the XML files
+        dir_file_path = os.path.join(script_dir, 'daily_HKA_PDIR_ALL - 副本.xml')
+        speed_file_path = os.path.join(script_dir, 'daily_HKA_WSPD_ALL - 副本.xml')
+        
         with st.spinner("Loading wind data..."):
-            df_direction = viz.parse_xml_file('daily_HKA_PDIR_ALL - 副本.xml')
-            df_speed = viz.parse_xml_file('daily_HKA_WSPD_ALL - 副本.xml')
+            df_direction = viz.parse_xml_file(dir_file_path)
+            df_speed = viz.parse_xml_file(speed_file_path)
         
         if df_direction.empty or df_speed.empty:
-            st.error("Could not load wind data files. Please ensure XML files are in the same directory.")
+            st.error("Could not load wind data files.")
+            st.info(f"Looking for files in: {script_dir}")
+            st.info(f"Direction file exists: {os.path.exists(dir_file_path)}")
+            st.info(f"Speed file exists: {os.path.exists(speed_file_path)}")
             return
         
         # Create and display plot
